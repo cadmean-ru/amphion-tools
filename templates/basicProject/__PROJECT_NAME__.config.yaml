@@ -1,0 +1,17 @@
+name: "{{ .ProjectName }}"
+author: "{{ .Author }}"
+companyDomain: "{{ .CompanyDomain }}"
+gitUrl: "{{ .GitUrl }}"
+publicUrl: ""
+mainScene: "main"
+configurations:
+  - name: "Serve web"
+    frontend: "web"
+    debug: true
+    url: "localhost:6900"
+  - name: "Debug on PC"
+    frontend: "pc"
+    debug: true
+  - name: "Run on PC"
+    frontend: "pc"
+    debug: false

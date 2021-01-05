@@ -1,0 +1,56 @@
+<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<script src="wasm_exec.js"></script>
+		<script src="p5.min.js"></script>
+		<title>Amphion</title>
+
+		<style>
+			body, html {
+				padding: 0;
+				margin: 0;
+			}
+
+			.panic {
+				text-align: center;
+				padding-top: 100px;
+				width: 100%;
+				height: 100%;
+				background-color: #780048;
+				color: white;
+				display: none;
+				box-sizing: border-box;
+			}
+
+			.panic div {
+				padding-top: 10px;
+				padding-bottom: 10px;
+			}
+
+			#panic-title {
+				font-size: 30px;
+				font-weight: bold;
+			}
+
+			#panic-reason {
+				font-size: 25px;
+				font-weight: bold;
+			}
+
+			#panic-message {
+				font-size: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="p5container"></div>
+		<script src="index.js"></script>
+		
+		<div class="panic">
+			<div id="panic-title">Amphion has crashed :(</div>
+			<div id="panic-reason"></div>
+			<div id="panic-message"></div>
+			<div>See console for details</div>
+		</div>
+	</body>
+</html>

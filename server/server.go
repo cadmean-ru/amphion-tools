@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err error) {
@@ -86,21 +87,26 @@ func (s *DevServer) BuildProject() (err error) {
 	//2. Run go build
 	var dstPath string
 	var dstFileName string
+	var goos, goarch string
 
 	switch s.runConfig.Frontend {
 	case "pc":
-		dstPath = filepath.Join(s.buildPath, os.Getenv("GOOS"))
+		dstPath = filepath.Join(s.buildPath, runtime.GOOS)
 		dstFileName = s.proj.Name
+		goos = os.Getenv("GOOS")
+		goarch = os.Getenv("GOARCH")
 	case "web":
 		dstPath = filepath.Join(s.buildPath, "web")
 		dstFileName = "app.wasm"
+		goos = "js"
+		goarch = "wasm"
 	default:
 		return fmt.Errorf("unknown platform")
 	}
 
 	_ = os.Mkdir(dstPath, os.FileMode(0777))
 
-	err = goBuild(srcPath, dstPath, dstFileName)
+	err = goBuild(srcPath, dstPath, dstFileName, goos, goarch)
 
 	return
 }
@@ -121,7 +127,14 @@ func (s *DevServer) RunProject() (err error) {
 	}
 
 	//3. Copy build folder
-	buildPath := filepath.Join(s.buildPath, os.Getenv("GOOS"))
+	var buildPath string
+	switch s.runConfig.Frontend {
+	case "pc":
+		buildPath = filepath.Join(s.buildPath, runtime.GOOS)
+	case "web":
+		buildPath = filepath.Join(s.buildPath, "web")
+	}
+
 	err = utils.CopyDir(buildPath, "./run")
 	if err != nil {
 		return
@@ -135,14 +148,28 @@ func (s *DevServer) RunProject() (err error) {
 	}
 	err = ioutil.WriteFile(filepath.Join("./run/app.yaml"), data, os.FileMode(0777))
 
+	//5. If on pc, we can run the app
+	if s.runConfig.Frontend == "pc" {
+		cmd := exec.Command("./" + s.proj.Name)
+		cmd.Dir = "run"
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Printf("%s\n", output)
+	}
+
 	return
 }
 
-func goBuild(srcPath, dstPath, dstFileName string) (err error) {
+func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
 	outFilePath := filepath.Join(dstPath, dstFileName)
 
 	build := exec.Command("go", "build", "-i", "-o", outFilePath)
 	build.Dir = srcPath
+	build.Env = os.Environ()
+	build.Env = append(build.Env, "GOOS=" + goos)
+	build.Env = append(build.Env, "GOARCH=" + goarch)
 
 	output, err := build.CombinedOutput()
 	if err != nil {

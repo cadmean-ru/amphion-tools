@@ -17,6 +17,7 @@ package main
 
 import (
 	"github.com/cadmean-ru/amphion/engine"
+	"github.com/cadmean-ru/amphion/engine/builtin"
 	"github.com/cadmean-ru/amphion/frontend/{{ .Frontend }}"
 )
 
@@ -26,8 +27,22 @@ func runApp() {
 
 	e := engine.Initialize(front)
 
-	//To be implemented:
-	//registerComponents(e)
+	cm := e.GetComponentsManager()
+	cm.RegisterComponentType(&builtin.ShapeView{})
+	cm.RegisterComponentType(&builtin.CircleBoundary{})
+	cm.RegisterComponentType(&builtin.OnClickListener{})
+	cm.RegisterComponentType(&builtin.TextView{})
+	cm.RegisterComponentType(&builtin.RectBoundary{})
+	cm.RegisterComponentType(&builtin.TriangleBoundary{})
+	cm.RegisterComponentType(&builtin.BezierView{})
+	cm.RegisterComponentType(&builtin.DropdownView{})
+	cm.RegisterComponentType(&builtin.ImageView{})
+	cm.RegisterComponentType(&builtin.InputField{})
+	cm.RegisterComponentType(&builtin.InputView{})
+	cm.RegisterComponentType(&builtin.MouseMover{})
+	cm.RegisterComponentType(&builtin.BuilderComponent{})
+
+	registerComponents(cm)
 	
 	{{ if (gt (len .Resources) 0) }}
 	rm := e.GetResourceManager()
@@ -38,6 +53,7 @@ func runApp() {
 
 	go func() {
 		e.Start()
+		e.LoadApp()
 		e.WaitForStop()
 	}()
 

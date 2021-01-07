@@ -104,7 +104,7 @@ func createProject(path, name, author, companyDomain, gitUrl string) (err error)
 		return fmt.Errorf("project already exists")
 	}
 
-	templateDirPath := "./templates/basicProject"
+	templateDirPath := filepath.Clean("./templates/basicProject")
 	err = utils.CopyDir(templateDirPath, fullProjectPath)
 	if err != nil {
 		return

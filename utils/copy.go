@@ -82,11 +82,6 @@ func CopyFile(source, dest string) (err error) {
 		return
 	}
 
-	err = sourceFile.Sync()
-	if err != nil {
-		return
-	}
-
 	si, err := os.Stat(source)
 	if err != nil {
 		return

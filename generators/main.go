@@ -147,5 +147,6 @@ func resName(path string) string {
 
 func stripResPath(projName, path string) string {
 	flag := projName + "/res"
-	return path[strings.Index(path, flag)+len(flag)+1:]
+	p := strings.ReplaceAll(path, "\\", "/")
+	return p[strings.Index(p, flag)+len(flag)+1:]
 }

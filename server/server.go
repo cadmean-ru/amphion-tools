@@ -146,7 +146,7 @@ func (s *DevServer) RunProject() (err error) {
 	if err != nil {
 		return
 	}
-	err = ioutil.WriteFile(filepath.Join("./run/app.yaml"), data, os.FileMode(0777))
+	err = ioutil.WriteFile(filepath.Clean("./run/app.yaml"), data, os.FileMode(0777))
 
 	//5. If on pc, we can run the app
 	if s.runConfig.Frontend == "pc" {

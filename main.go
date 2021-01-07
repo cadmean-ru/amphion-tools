@@ -173,7 +173,7 @@ func createProject(path, name, author, companyDomain, gitUrl string) (err error)
 		return
 	}
 
-	cmd = exec.Command("go", "get", "-u", "github.com/cadmean-ru/amphion@v0.1.0rc4")
+	cmd = exec.Command("go", "get", "-u", "github.com/cadmean-ru/amphion@v0.1.0")
 	cmd.Dir = codeDirPath
 	output, err := cmd.CombinedOutput()
 	if err != nil {

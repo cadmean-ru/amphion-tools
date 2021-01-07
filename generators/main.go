@@ -41,6 +41,7 @@ func runApp() {
 	cm.RegisterComponentType(&builtin.InputView{})
 	cm.RegisterComponentType(&builtin.MouseMover{})
 	cm.RegisterComponentType(&builtin.BuilderComponent{})
+	cm.RegisterComponentType(&builtin.GridLayout{})
 
 	registerComponents(cm)
 	
@@ -81,7 +82,7 @@ func Main(projPath string, config *project.Config, runConfig *project.RunConfig)
 		Resources []string
 		ResNames  []string
 	}{
-		Frontend: runConfig.Frontend,
+		Frontend:  runConfig.Frontend,
 		Resources: make([]string, 0),
 		ResNames:  make([]string, 0),
 	}

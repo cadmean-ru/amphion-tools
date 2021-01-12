@@ -28,7 +28,7 @@ func (c *Config) GetRunConfig(name string) *RunConfig {
 type RunConfig struct {
 	Name     string `yaml:"name"`
 	Frontend string `yaml:"frontend"`
-	Debug    string `yaml:"debug"`
+	Debug    bool   `yaml:"debug"`
 	Url      string `yaml:"url"`
 }
 

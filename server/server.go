@@ -78,6 +78,14 @@ func (s *DevServer) handleDirectoryUpdate() {
 
 func (s *DevServer) BuildProject() (err error) {
 	srcPath := filepath.Join(s.projPath, s.proj.Name)
+
+	//0. Copy builtin res folder to run folder
+	builtinResPath := filepath.Join("templates", "res")
+	err = utils.CopyDir(builtinResPath, filepath.Join(s.projPath, "res", "builtin"))
+	if err != nil {
+		return err
+	}
+
 	//1. Generate code
 	err = generators.Main(s.projPath, s.proj, s.runConfig)
 	if err != nil {
@@ -121,7 +129,7 @@ func (s *DevServer) RunProject() (err error) {
 
 	//2. Copy res folder to run folder
 	resPath := filepath.Join(s.projPath, "res")
-	err = utils.CopyDir(resPath, "./run/res")
+	err = utils.CopyDir(resPath, filepath.Join("run", "res"))
 	if err != nil {
 		return
 	}

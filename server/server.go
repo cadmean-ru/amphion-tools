@@ -14,11 +14,7 @@ import (
 )
 
 func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err error) {
-	_, name := filepath.Split(projectPath)
-
-	configFilePath := filepath.Join(projectPath, name + ".config.yaml")
-
-	config, err := project.ParseConfig(configFilePath)
+	config, err := project.FindProjectConfig(projectPath)
 	if err != nil {
 		return
 	}
@@ -48,6 +44,7 @@ type DevServer struct {
 	proj      *project.Config
 	projPath  string
 	buildPath string
+	webDebug  *WebDebugServer
 }
 
 func (s *DevServer) Stop() {
@@ -56,6 +53,10 @@ func (s *DevServer) Stop() {
 	}
 	s.stopped = true
 	s.done <- true
+
+	if s.webDebug != nil {
+		s.webDebug.Stop()
+	}
 }
 
 func (s *DevServer) Start() {
@@ -69,6 +70,14 @@ func (s *DevServer) Start() {
 
 	if s.runConfig.Frontend == "web" {
 		go utils.HttpServeDir("./run", s.runConfig.Url, s.done)
+
+		if s.runConfig.Debug {
+			s.webDebug = NewWebDebugServer("4242")
+			s.webDebug.Start()
+			utils.OpenBrowser("http://" + s.runConfig.Url + "?connectDebugger=4242")
+		} else {
+			utils.OpenBrowser("http://" + s.runConfig.Url)
+		}
 	}
 }
 
@@ -127,14 +136,26 @@ func (s *DevServer) RunProject() (err error) {
 		return
 	}
 
-	//2. Copy res folder to run folder
+	//2. Prepare for debugging if necessary.
+	if s.runConfig.Frontend == "web" {
+		if s.runConfig.Debug {
+			err = utils.CopyFile(filepath.Join("templates", "webDebug", "amphiondebug.js"), filepath.Join("run", "amphiondebug.js"))
+		} else {
+			_ = os.Remove(filepath.Join("run", "amphiondebug.js"))
+		}
+		if err != nil {
+			return
+		}
+	}
+
+	//3. Copy res folder to run folder
 	resPath := filepath.Join(s.projPath, "res")
 	err = utils.CopyDir(resPath, filepath.Join("run", "res"))
 	if err != nil {
 		return
 	}
 
-	//3. Copy build folder
+	//4. Copy build folder
 	var buildPath string
 	switch s.runConfig.Frontend {
 	case "pc":
@@ -148,7 +169,7 @@ func (s *DevServer) RunProject() (err error) {
 		return
 	}
 
-	//4. Generate app.yaml and copy to run
+	//5. Generate app.yaml and copy to run
 	app := project.NewAppFromConfig(s.proj, s.runConfig)
 	data, err := yaml.Marshal(app)
 	if err != nil {
@@ -156,7 +177,7 @@ func (s *DevServer) RunProject() (err error) {
 	}
 	err = ioutil.WriteFile(filepath.Clean("./run/app.yaml"), data, os.FileMode(0777))
 
-	//5. If on pc, we can run the app
+	//6. If on pc, we can run the app
 	if s.runConfig.Frontend == "pc" {
 		cmd := exec.Command("./" + s.proj.Name)
 		cmd.Dir = "run"
@@ -165,6 +186,10 @@ func (s *DevServer) RunProject() (err error) {
 			fmt.Println(err)
 		}
 		fmt.Printf("%s\n", output)
+	}
+	//If on web, refresh page
+	if s.runConfig.Frontend == "web" && s.webDebug != nil {
+		s.webDebug.Refresh()
 	}
 
 	return

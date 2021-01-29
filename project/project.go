@@ -3,6 +3,7 @@ package project
 import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"path/filepath"
 )
 
 type Config struct {
@@ -45,4 +46,13 @@ func ParseConfig(configFilePath string) (config *Config, err error) {
 	}
 
 	return &c, nil
+}
+
+func FindProjectConfig(projectPath string) (config *Config, err error) {
+	_, name := filepath.Split(projectPath)
+
+	configFilePath := filepath.Join(projectPath, name + ".config.yaml")
+
+	config, err = ParseConfig(configFilePath)
+	return
 }

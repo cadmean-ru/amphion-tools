@@ -42,6 +42,8 @@ func runApp() {
 	cm.RegisterComponentType(&builtin.MouseMover{})
 	cm.RegisterComponentType(&builtin.BuilderComponent{})
 	cm.RegisterComponentType(&builtin.GridLayout{})
+	cm.RegisterComponentType(&builtin.NativeInputView{})
+	//cm.RegisterComponentType(&builtin.EventListener{})
 
 	registerComponents(cm)
 	

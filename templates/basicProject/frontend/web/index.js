@@ -13,6 +13,21 @@ function draw() {
         window.goDraw();
 }
 
+let urlParams = new URLSearchParams(window.location.search);
+let debugPort = urlParams.get("connectDebugger");
+
+if (debugPort) {
+    let script = document.createElement("script");
+    script.onload = () => {
+        if (!window.amphionDebugger)
+            return;
+
+        window.amphionDebugger.start(debugPort);
+    };
+    script.src = "amphiondebug.js";
+    document.body.appendChild(script);
+}
+
 if (WebAssembly.instantiateStreaming) {
     WebAssembly.instantiateStreaming(fetch("app.wasm"), go.importObject).then((result) => {
         go.run(result.instance);

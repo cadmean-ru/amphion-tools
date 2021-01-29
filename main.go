@@ -1,6 +1,7 @@
 package main
 
 import (
+	"amphion-tools/project"
 	"amphion-tools/server"
 	"amphion-tools/utils"
 	"bufio"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -194,9 +196,28 @@ func serve() {
 		scanner.Scan()
 		projectPath = scanner.Text()
 
-		fmt.Print("Enter run config: ")
+		p, err := project.FindProjectConfig(projectPath)
+		if err != nil {
+			panic("failed to find project config file")
+		}
+
+		fmt.Println("Select run config:")
+
+		for i, conf := range p.Configurations {
+			fmt.Printf("%d - %s (%s)\n", i, conf.Name, conf.Frontend)
+		}
+
 		scanner.Scan()
-		runConfig = scanner.Text()
+		numStr := scanner.Text()
+		var num int
+		num, err = strconv.Atoi(numStr)
+		if err != nil || num < 0 || num > len(p.Configurations) {
+			num = 0
+		}
+
+		runConfig = p.Configurations[num].Name
+
+		fmt.Printf("Selected fonfig: %s\n", runConfig)
 	} else {
 		projectPath = os.Args[2]
 		runConfig = os.Args[3]

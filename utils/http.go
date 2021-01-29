@@ -1,20 +1,26 @@
 package utils
 
 import (
+	"context"
 	"fmt"
-	"log"
 	"net/http"
 )
 
 func HttpServeDir(path string, url string, done chan bool) {
 	fmt.Printf("Serving directory %s at url: %s\n", path, url)
 
-	err := http.ListenAndServe(url, http.FileServer(http.Dir(path)))
-	if err != nil {
-		log.Fatal(err)
-	}
+	srv := &http.Server{Addr: url}
+	srv.Handler = http.FileServer(http.Dir(path))
+
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
 
 	<-done
+
+	_ = srv.Shutdown(context.Background())
 
 	fmt.Println("Stopped serving directory")
 }

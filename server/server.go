@@ -63,6 +63,7 @@ func (s *DevServer) Start() {
 	_ = os.Mkdir("./run", os.FileMode(0777))
 	_ = os.Mkdir(s.buildPath, os.FileMode(0777))
 
+
 	s.stopped = false
 
 	//dirs := []string { filepath.Join(s.projPath, "res"), filepath.Join(s.projPath, s.proj.Name) }

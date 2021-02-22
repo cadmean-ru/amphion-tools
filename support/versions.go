@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-const LatestSupportedAmphionVersion = "0.1.9"
-const MinimumSupportedAmphionVersion = "0.1.9"
+const LatestSupportedAmphionVersion = "0.2.0"
+const MinimumSupportedAmphionVersion = "0.1.10"
 
 func IsAmphionVersionSupported(ver string) bool {
 	latestNum := stringVersionToNumber(LatestSupportedAmphionVersion)

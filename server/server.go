@@ -38,6 +38,7 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 			if support.IsAmphionVersionSupported(dep.Version) {
 				ok = true
 			}
+			break
 		}
 	}
 

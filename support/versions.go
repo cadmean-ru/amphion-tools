@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-const LatestSupportedAmphionVersion = "0.1.7"
-const MinimumSupportedAmphionVersion = "0.1.7"
+const LatestSupportedAmphionVersion = "0.1.9"
+const MinimumSupportedAmphionVersion = "0.1.9"
 
 func IsAmphionVersionSupported(ver string) bool {
 	latestNum := stringVersionToNumber(LatestSupportedAmphionVersion)
@@ -17,6 +17,7 @@ func IsAmphionVersionSupported(ver string) bool {
 
 func stringVersionToNumber(ver string) int {
 	numStr := strings.ReplaceAll(ver, ".", "")
+	numStr = strings.ReplaceAll(numStr, "v", "")
 	numStr = strings.ReplaceAll(numStr, "rc", "")
 
 	num, err := strconv.Atoi(numStr)

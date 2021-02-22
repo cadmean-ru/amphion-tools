@@ -40,7 +40,7 @@ func serve() {
 
 		runConfig = p.Configurations[num].Name
 
-		fmt.Printf("Selected fonfig: %s\n", runConfig)
+		fmt.Printf("Selected config: %s\n", runConfig)
 	} else {
 		projectPath = os.Args[2]
 		runConfig = os.Args[3]
@@ -48,7 +48,7 @@ func serve() {
 
 	s, err := server.StartDevelopment(projectPath, runConfig)
 	if err != nil {
-		fmt.Println("Failed to start development server")
+		fmt.Printf("Failed to start development server: %s\n", err)
 		return
 	}
 

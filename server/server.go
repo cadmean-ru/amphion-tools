@@ -1,9 +1,12 @@
 package server
 
 import (
+	"amphion-tools/analysis"
 	"amphion-tools/generators"
 	"amphion-tools/project"
+	"amphion-tools/support"
 	"amphion-tools/utils"
+	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -22,6 +25,24 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 	runConfig := config.GetRunConfig(runConfigName)
 	if runConfig == nil {
 		return nil, fmt.Errorf("run configuration not found")
+	}
+
+	deps, err := analysis.GetProjectDependencies(filepath.Join(projectPath, config.Name))
+	if err != nil {
+		return nil, err
+	}
+
+	var ok bool
+	for _, dep := range deps {
+		if dep.Name == "github.com/cadmean-ru/amphion" {
+			if support.IsAmphionVersionSupported(dep.Version) {
+				ok = true
+			}
+		}
+	}
+
+	if !ok {
+		return nil, errors.New("unsupported amphion version")
 	}
 
 	s = &DevServer{
@@ -199,7 +220,7 @@ func (s *DevServer) RunProject() (err error) {
 func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
 	outFilePath := filepath.Join(dstPath, dstFileName)
 
-	build := exec.Command("go", "build", "-i", "-o", outFilePath)
+	build := exec.Command("go", "build", "-o", outFilePath)
 	build.Dir = srcPath
 	build.Env = os.Environ()
 	build.Env = append(build.Env, "GOOS=" + goos)

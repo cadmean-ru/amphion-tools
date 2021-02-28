@@ -22,11 +22,7 @@ children:
     components:
       - name: github.com/cadmean-ru/amphion/engine/builtin.TextView
         state:
-          textColor:
-            r: 0
-            g: 0
-            b: 0
-            a: 255
+          textColor: "#000"
           font: ""
           fontSize: 20
           fontWeight: 0
@@ -34,16 +30,8 @@ children:
 components:
   - name: github.com/cadmean-ru/amphion/engine/builtin.ShapeView
     state:
-      fillColor:
-        r: 0
-        g: 255
-        b: 0
-        a: 255
-      strokeColor:
-        r: 0
-        g: 0
-        b: 0
-        a: 255
+      fillColor: "#0f0"
+      strokeColor: "#000"
       strokeWeight: 0
       cornerRadius: 10
       pType: 3

@@ -22,11 +22,7 @@ children:
     components:
       - name: github.com/cadmean-ru/amphion/engine/builtin.TextView
         state:
-          textColor:
-            r: 0
-            g: 0
-            b: 255
-            a: 255
+          textColor: "#00f"
           font: ""
           fontSize: 20
           fontWeight: 0

@@ -1,11 +1,15 @@
 package main
 
 import (
+	"amphion-tools/support"
 	"fmt"
 	"os"
 )
 
 func main() {
+	fmt.Printf("Amphion tools v%s\n", support.ToolsVersion)
+	fmt.Println("©Cadmean 2021")
+
 	args := os.Args
 
 	var command string
@@ -24,6 +28,8 @@ func main() {
 		serve()
 	case "analyze":
 		analyze()
+	case "dev-serve":
+		devServe()
 	default:
 		fmt.Println("Unknown command")
 	}

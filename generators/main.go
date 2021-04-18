@@ -37,8 +37,6 @@ func runApp() {
 	cm.RegisterComponentType(&builtin.BezierView{})
 	cm.RegisterComponentType(&builtin.DropdownView{})
 	cm.RegisterComponentType(&builtin.ImageView{})
-	cm.RegisterComponentType(&builtin.InputField{})
-	cm.RegisterComponentType(&builtin.InputView{})
 	cm.RegisterComponentType(&builtin.MouseMover{})
 	cm.RegisterComponentType(&builtin.BuilderComponent{})
 	cm.RegisterComponentType(&builtin.GridLayout{})

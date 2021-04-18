@@ -15,7 +15,7 @@ func devServe() {
 
 	if len(os.Args) != 4 {
 		_, _ = fmt.Scanln(&buildPath)
-		_, _ = fmt.Scanln(&buildPath)
+		_, _ = fmt.Scanln(&publicPath)
 	} else {
 		buildPath = os.Args[2]
 		publicPath = os.Args[3]

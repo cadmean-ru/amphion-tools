@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-const LatestSupportedAmphionVersion = "0.1.99"
-const MinimumSupportedAmphionVersion = "0.1.11"
+const LatestSupportedAmphionVersion = "0.2.99"
+const MinimumSupportedAmphionVersion = "0.2.0"
 
-const ToolsVersion = "0.1.11"
+const ToolsVersion = "0.2.0preview1"
 
 func IsAmphionVersionSupported(ver string) bool {
 	latestNum1, latestNum2, latestNum3 := stringVersionToNumber(LatestSupportedAmphionVersion)
@@ -22,6 +22,7 @@ func IsAmphionVersionSupported(ver string) bool {
 func stringVersionToNumber(ver string) (int, int, int) {
 	numStr := strings.ReplaceAll(ver, "v", "")
 	numStr = strings.ReplaceAll(numStr, "rc", "")
+	numStr = strings.ReplaceAll(numStr, "preview", "")
 
 	tokens := strings.Split(numStr, ".")
 

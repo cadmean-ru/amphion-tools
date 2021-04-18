@@ -10,7 +10,7 @@ func analyze() {
 	var what, path string
 
 	if len(os.Args) < 4 {
-		fmt.Print("Enter what to analyze (dependencies, lines):")
+		fmt.Print("Enter what to analyze (dependencies, lines, components):")
 		fmt.Scanln(&what)
 
 		fmt.Print("Enter path:")
@@ -25,6 +25,8 @@ func analyze() {
 		analyzeDependencies(path)
 	case "lines":
 		analyzeLines(path)
+	case "components":
+		analyzeComponents(path)
 	default:
 		fmt.Println("Dont know what to analyze")
 	}
@@ -53,4 +55,17 @@ func analyzeLines(path string) {
 	fmt.Printf("Not empty: %d\n", count.NotEmpty)
 	fmt.Printf("Code: %d\n", count.Code)
 	fmt.Printf("Comments: %d\n", count.Comments)
+}
+
+func analyzeComponents(path string) {
+	structs, err := analysis.GetStructList(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Found structs:")
+	for _, info := range structs {
+		fmt.Println(info.Name)
+	}
 }

@@ -6,21 +6,25 @@ import (
 )
 
 const LatestSupportedAmphionVersion = "0.2.99"
-const MinimumSupportedAmphionVersion = "0.2.0"
+const MinimumSupportedAmphionVersion = "0.1.12"
 
-const ToolsVersion = "0.2.0preview1"
+const ToolsVersion = "0.2.0-preview.2"
 
 func IsAmphionVersionSupported(ver string) bool {
-	latestNum1, latestNum2, latestNum3 := stringVersionToNumber(LatestSupportedAmphionVersion)
-	minNum1, minNum2, minNum3 := stringVersionToNumber(MinimumSupportedAmphionVersion)
-	verNum1, verNum2, verNum3 := stringVersionToNumber(ver)
-	return verNum1 >= minNum1 && verNum1 <= latestNum1 &&
-		verNum2 >= minNum2 && verNum2 <= latestNum2 &&
-		verNum3 >= minNum3 && verNum3 <= latestNum3
+	vLatest := comparisonNumber(stringVersionToNumber(LatestSupportedAmphionVersion))
+	vMin := comparisonNumber(stringVersionToNumber(MinimumSupportedAmphionVersion))
+	v := comparisonNumber(stringVersionToNumber(ver))
+
+	return v >= vMin && v <=vLatest
+}
+
+func comparisonNumber(v1, v2, v3 int) int {
+	return v1*10000 + v2*100 + v3
 }
 
 func stringVersionToNumber(ver string) (int, int, int) {
-	numStr := strings.ReplaceAll(ver, "v", "")
+	numStr := strings.Split(ver, "-")[0]
+	numStr = strings.ReplaceAll(numStr, "v", "")
 	numStr = strings.ReplaceAll(numStr, "rc", "")
 	numStr = strings.ReplaceAll(numStr, "preview", "")
 

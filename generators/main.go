@@ -55,7 +55,10 @@ func runApp() {
 	go func() {
 		e.Start()
 		e.LoadApp()
+
+		{{ if (ne .Frontend "pc") }}
 		e.WaitForStop()
+		{{ end }}
 	}()
 
 	front.Run()

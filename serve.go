@@ -9,15 +9,19 @@ import (
 	"strconv"
 )
 
-func serve() {
+func serve(lastProjectPath string) {
 	var projectPath, runConfig string
 
 	if len(os.Args) < 4 {
 		scanner := bufio.NewScanner(os.Stdin)
 
-		fmt.Print("Enter project path: ")
-		scanner.Scan()
-		projectPath = scanner.Text()
+		if lastProjectPath == "" {
+			fmt.Print("Enter project path: ")
+			scanner.Scan()
+			projectPath = scanner.Text()
+		} else {
+			projectPath = lastProjectPath
+		}
 
 		p, err := project.FindProjectConfig(projectPath)
 		if err != nil {

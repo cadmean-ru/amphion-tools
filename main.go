@@ -1,6 +1,7 @@
 package main
 
 import (
+	"amphion-tools/settings"
 	"amphion-tools/support"
 	"fmt"
 	"os"
@@ -11,6 +12,14 @@ func main() {
 	fmt.Println("©Cadmean 2021")
 
 	args := os.Args
+
+	s := settings.Load()
+	lastProjectPath := ""
+	if s.LastProject != nil {
+		fmt.Printf("Last project: %s - %s\n", s.LastProject.Name, s.LastProject.Path)
+		fmt.Println("Use command \"last\" to serve it.")
+		lastProjectPath = s.LastProject.Path
+	}
 
 	var command string
 
@@ -25,7 +34,9 @@ func main() {
 	case "create":
 		createProjectInteractive()
 	case "serve":
-		serve()
+		serve(lastProjectPath)
+	case "last":
+		serve(lastProjectPath)
 	case "analyze":
 		analyze()
 	case "dev-serve":

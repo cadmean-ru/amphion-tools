@@ -41,3 +41,10 @@ if (WebAssembly.instantiateStreaming) {
         go.run(result.instance)
     );
 }
+
+function commencePanic(reason, msg) {
+    document.querySelector("canvas").style.display = "none";
+    document.querySelector(".panic").style.display = "block";
+    document.querySelector("#panic-reason").innerHTML = reason;
+    document.querySelector("#panic-message").innerHTML = msg;
+}

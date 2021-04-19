@@ -4,6 +4,7 @@ import (
 	"amphion-tools/analysis"
 	"amphion-tools/generators"
 	"amphion-tools/project"
+	"amphion-tools/settings"
 	"amphion-tools/support"
 	"amphion-tools/utils"
 	"errors"
@@ -45,6 +46,12 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 	if !ok {
 		return nil, errors.New("unsupported amphion version")
 	}
+
+	settings.Current.LastProject = &settings.LastProject{
+		Name: config.Name,
+		Path: projectPath,
+	}
+	_ = settings.Save(settings.Current)
 
 	s = &DevServer{
 		runConfig: runConfig,
@@ -95,9 +102,9 @@ func (s *DevServer) Start() {
 		go utils.HttpServeDir("./run", s.runConfig.Url, s.done)
 
 		if s.runConfig.Debug {
-			s.webDebug = NewWebDebugServer("4242")
+			s.webDebug = NewWebDebugServer("4200")
 			s.webDebug.Start()
-			utils.OpenBrowser("http://" + s.runConfig.Url + "?connectDebugger=4242")
+			utils.OpenBrowser("http://" + s.runConfig.Url + "?connectDebugger=4200")
 		} else {
 			utils.OpenBrowser("http://" + s.runConfig.Url)
 		}
@@ -132,12 +139,12 @@ func (s *DevServer) BuildProject() (err error) {
 	switch s.runConfig.Frontend {
 	case "pc":
 		dstPath = filepath.Join(s.buildPath, runtime.GOOS)
-		dstFileName = s.proj.Name
+		dstFileName = executableName(s.proj, s.runConfig)
 		goos = os.Getenv("GOOS")
 		goarch = os.Getenv("GOARCH")
 	case "web":
 		dstPath = filepath.Join(s.buildPath, "web")
-		dstFileName = "app.wasm"
+		dstFileName = executableName(s.proj, s.runConfig)
 		goos = "js"
 		goarch = "wasm"
 	default:
@@ -154,7 +161,7 @@ func (s *DevServer) BuildProject() (err error) {
 func (s *DevServer) RunProject() (err error) {
 	//1. Copy files from corresponding frontend folder to run folder
 	frontendPath := filepath.Join(s.projPath, "frontend", s.runConfig.Frontend)
-	err = utils.CopyDir(frontendPath, "./run")
+	err = utils.CopyDir(frontendPath, "run")
 	if err != nil {
 		return
 	}
@@ -187,7 +194,7 @@ func (s *DevServer) RunProject() (err error) {
 		buildPath = filepath.Join(s.buildPath, "web")
 	}
 
-	err = utils.CopyDir(buildPath, "./run")
+	err = utils.CopyDir(buildPath, "run")
 	if err != nil {
 		return
 	}
@@ -202,7 +209,7 @@ func (s *DevServer) RunProject() (err error) {
 
 	//6. If on pc, we can run the app
 	if s.runConfig.Frontend == "pc" {
-		cmd := exec.Command("./" + s.proj.Name)
+		cmd := exec.Command(filepath.Join(".", executableName(s.proj, s.runConfig)))
 		cmd.Dir = "run"
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -236,4 +243,20 @@ func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
 	fmt.Printf("%s\n", output)
 
 	return
+}
+
+func executableName(proj *project.Config, runConfig *project.RunConfig) string {
+	switch runConfig.Frontend {
+	case "web":
+		return "app.wasm"
+	case "pc":
+		switch runtime.GOOS {
+		case "windows":
+			return proj.Name + ".exe"
+		default:
+			return proj.Name
+		}
+	}
+
+	return ""
 }

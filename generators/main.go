@@ -19,7 +19,15 @@ import (
 	"github.com/cadmean-ru/amphion/engine"
 	"github.com/cadmean-ru/amphion/engine/builtin"
 	"github.com/cadmean-ru/amphion/frontend/{{ .Frontend }}"
+	"runtime"
 )
+
+{{ if (eq .Frontend "pc") }}
+func init() {
+	runtime.LockOSThread()
+}
+{{ end }}
+
 
 func runApp() {
 	front := {{ .Frontend }}.NewFrontend()

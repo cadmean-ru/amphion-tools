@@ -209,7 +209,7 @@ func (s *DevServer) RunProject() (err error) {
 
 	//6. If on pc, we can run the app
 	if s.runConfig.Frontend == "pc" {
-		cmd := exec.Command(filepath.Join(".", executableName(s.proj, s.runConfig)))
+		cmd := exec.Command("./" + executableName(s.proj, s.runConfig))
 		cmd.Dir = "run"
 		output, err := cmd.CombinedOutput()
 		if err != nil {

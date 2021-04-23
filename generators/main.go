@@ -19,7 +19,9 @@ import (
 	"github.com/cadmean-ru/amphion/engine"
 	"github.com/cadmean-ru/amphion/engine/builtin"
 	"github.com/cadmean-ru/amphion/frontend/{{ .Frontend }}"
+{{ if (eq .Frontend "pc") }}
 	"runtime"
+{{ end }}
 )
 
 {{ if (eq .Frontend "pc") }}

@@ -34,7 +34,7 @@ func main() {
 	case "create":
 		createProjectInteractive()
 	case "serve":
-		serve(lastProjectPath)
+		serve("")
 	case "last":
 		serve(lastProjectPath)
 	case "analyze":

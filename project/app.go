@@ -1,5 +1,7 @@
 package project
 
+import "runtime"
+
 type App struct {
 	Name          string `yaml:"name"`
 	Author        string `yaml:"author"`
@@ -8,6 +10,7 @@ type App struct {
 	Frontend      string `yaml:"frontend"`
 	Debug         bool   `yaml:"debug"`
 	MainScene     string `yaml:"mainScene"`
+	HostOS        string `yaml:"hostOS"`
 }
 
 func NewAppFromConfig(config *Config, runConfig *RunConfig) *App {
@@ -19,5 +22,6 @@ func NewAppFromConfig(config *Config, runConfig *RunConfig) *App {
 		Frontend:      runConfig.Frontend,
 		Debug:         runConfig.Debug,
 		MainScene:     config.MainScene,
+		HostOS:        runtime.GOOS,
 	}
 }

@@ -55,7 +55,7 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 
 	s = &DevServer{
 		runConfig: runConfig,
-		done:      make(chan bool),
+		done:      make(chan bool, 1),
 		stopped:   false,
 		proj:      config,
 		projPath:  projectPath,
@@ -115,7 +115,18 @@ func (s *DevServer) handleDirectoryUpdate() {
 	//_ = s.BuildProject()
 }
 
-func (s *DevServer) BuildProject() (err error) {
+func (s *DevServer) BuildProject() error {
+	switch s.runConfig.Frontend {
+	case "android":
+		return s.androidBuild()
+	case "ios":
+		return s.iosBuild()
+	default:
+		return s.defaultBuild()
+	}
+}
+
+func (s *DevServer) defaultBuild() (err error) {
 	srcPath := filepath.Join(s.projPath, s.proj.Name)
 
 	//0. Copy builtin res folder to run folder
@@ -126,7 +137,12 @@ func (s *DevServer) BuildProject() (err error) {
 	}
 
 	//1. Generate code
-	err = generators.Main(s.projPath, s.proj, s.runConfig)
+	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
+	err = generators.Main(data, s.projPath, s.proj, s.runConfig)
+	if err != nil {
+		return
+	}
+	err = generators.Res(data, s.projPath, s.proj)
 	if err != nil {
 		return
 	}
@@ -158,7 +174,71 @@ func (s *DevServer) BuildProject() (err error) {
 	return
 }
 
+func (s *DevServer) androidBuild() (err error) {
+	srcPath := filepath.Join(s.projPath, s.proj.Name)
+
+	//1. Generate code
+	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
+	err = generators.AndroidMain(data, s.projPath, s.proj, s.runConfig)
+	if err != nil {
+		return
+	}
+	err = generators.Android(data, s.projPath, s.proj, s.runConfig)
+	if err != nil {
+		return
+	}
+	err = generators.Res(data, s.projPath, s.proj)
+	if err != nil {
+		return
+	}
+
+	//2. Run gomobile bind
+	var dstPath = filepath.Join(s.buildPath, s.proj.Name + ".android.aar")
+
+	err = s.goMobileBind("android", srcPath, dstPath)
+
+	if err == nil {
+		fmt.Printf("Android library file was successfully created: %s\n", dstPath)
+	}
+
+	return
+}
+
+func (s *DevServer) iosBuild() (err error) {
+	srcPath := filepath.Join(s.projPath, s.proj.Name)
+
+	//1. Generate code
+	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
+	err = generators.IosMain(data, s.projPath, s.proj, s.runConfig)
+	if err != nil {
+		return
+	}
+	err = generators.Ios(data, s.projPath, s.proj, s.runConfig)
+	if err != nil {
+		return
+	}
+	err = generators.Res(data, s.projPath, s.proj)
+	if err != nil {
+		return
+	}
+
+	//2. Run gomobile bind
+	var dstPath = filepath.Join(s.buildPath, "Amphion.framework")
+
+	err = s.goMobileBind("ios", srcPath, dstPath)
+
+	if err == nil {
+		fmt.Printf("iOS framework was successfully created: %s\n", dstPath)
+	}
+
+	return
+}
+
 func (s *DevServer) RunProject() (err error) {
+	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {
+		return errors.New("cannot run on this frontend")
+	}
+
 	//1. Copy files from corresponding frontend folder to run folder
 	frontendPath := filepath.Join(s.projPath, "frontend", s.runConfig.Frontend)
 	err = utils.CopyDir(frontendPath, "run")
@@ -211,11 +291,14 @@ func (s *DevServer) RunProject() (err error) {
 	if s.runConfig.Frontend == "pc" {
 		cmd := exec.Command("./" + executableName(s.proj, s.runConfig))
 		cmd.Dir = "run"
-		output, err := cmd.CombinedOutput()
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		err = cmd.Run()
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
-		fmt.Printf("%s\n", output)
 	}
 	//If on web, refresh page
 	if s.runConfig.Frontend == "web" && s.webDebug != nil {
@@ -233,14 +316,57 @@ func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
 	build.Env = os.Environ()
 	build.Env = append(build.Env, "GOOS=" + goos)
 	build.Env = append(build.Env, "GOARCH=" + goarch)
+	build.Stdout = os.Stdout
+	build.Stderr = os.Stderr
 
-	output, err := build.CombinedOutput()
+	err = build.Run()
 	if err != nil {
-		fmt.Printf("%s\n", output)
-		return
+		fmt.Println(err)
 	}
 
+	return
+}
+
+func (s *DevServer) goMobileBind(target, srcPath, dstFilePath string) (err error) {
+
+	var bind *exec.Cmd
+
+	if target == "android" {
+		bind = exec.Command("gomobile",
+			"bind",
+			"-target=" + target,
+			"-o", dstFilePath,
+			"-javapkg=ru.cadmean.amphion.android",
+			s.proj.Name + "/generated/droidCli",
+			"github.com/cadmean-ru/amphion/frontend/cli",
+			"github.com/cadmean-ru/amphion/common/atext",
+			"github.com/cadmean-ru/amphion/common/dispatch",
+		)
+	} else {
+		bind = exec.Command("gomobile",
+			"bind",
+			"-target=" + target,
+			"-o", dstFilePath,
+			s.proj.Name + "/generated/iosCli",
+			"github.com/cadmean-ru/amphion/frontend/cli",
+			"github.com/cadmean-ru/amphion/common/atext",
+			"github.com/cadmean-ru/amphion/common/dispatch",
+		)
+	}
+
+	bind.Dir = srcPath
+	bind.Env = os.Environ()
+	if target == "android" {
+		bind.Env = append(bind.Env, "ANDROID_NDK_HOME=/Users/alex/Library/Android/sdk/ndk/23.0.7196353")
+		bind.Env = append(bind.Env, "ANDROID_HOME=/Users/alex/Library/Android/sdk")
+	}
+
+	output, err := bind.CombinedOutput()
 	fmt.Printf("%s\n", output)
+
+	if err != nil {
+		return
+	}
 
 	return
 }

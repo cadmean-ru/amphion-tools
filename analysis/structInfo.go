@@ -7,9 +7,11 @@ const (
 	ByValue
 )
 
-type TypeName string
+//type TypeName string
 
 type StructInfo struct {
-	Name    string
-	Methods []*FuncInfo
+	Name       string
+	Methods    []*FuncInfo
+	Embeddings []*FieldInfo
+	Fields     []*FieldInfo
 }

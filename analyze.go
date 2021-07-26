@@ -58,14 +58,41 @@ func analyzeLines(path string) {
 }
 
 func analyzeComponents(path string) {
+	funcs, err := analysis.GetFunctionsList(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("Found funcs:")
+	for _, f := range funcs {
+		fmt.Println(f)
+	}
+
 	structs, err := analysis.GetStructList(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	analysis.GetMethods(structs, funcs)
+
+	fmt.Println()
 	fmt.Println("Found structs:")
 	for _, info := range structs {
 		fmt.Println(info.Name)
+
+		for _, e := range info.Embeddings {
+			fmt.Printf("\t%s\n", e.TypeName)
+		}
+
+		for _, f := range info.Fields {
+			fmt.Printf("\t%v\n", f)
+		}
+
+		for _, m := range info.Methods {
+			fmt.Printf("\t%s\n", m.String())
+		}
 	}
 }

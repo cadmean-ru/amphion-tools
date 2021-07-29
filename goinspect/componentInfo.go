@@ -1,4 +1,4 @@
-package analysis
+package goinspect
 
 type ComponentInfo struct {
 	StructInfo

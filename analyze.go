@@ -2,6 +2,7 @@ package main
 
 import (
 	"amphion-tools/analysis"
+	"amphion-tools/goinspect"
 	"fmt"
 	"os"
 )
@@ -58,41 +59,68 @@ func analyzeLines(path string) {
 }
 
 func analyzeComponents(path string) {
-	funcs, err := analysis.GetFunctionsList(path)
+	inspector := goinspect.NewInspector()
+
+	err := inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/common")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println()
-	fmt.Println("Found funcs:")
-	for _, f := range funcs {
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/common/a")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/rendering")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/engine")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/engine/builtin")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = inspector.InspectSemantics(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Found top level functions:")
+	for _, f := range inspector.GetFunctions() {
 		fmt.Println(f)
 	}
 
-	structs, err := analysis.GetStructList(path)
-	if err != nil {
-		fmt.Println(err)
-		return
+	fmt.Println()
+	fmt.Println("Found interfaces:")
+	for _, i := range inspector.GetInterfaces() {
+		fmt.Println(i)
 	}
-
-	analysis.GetMethods(structs, funcs)
 
 	fmt.Println()
 	fmt.Println("Found structs:")
-	for _, info := range structs {
-		fmt.Println(info.Name)
+	for _, s := range inspector.GetStructs() {
+		fmt.Println(s)
+	}
 
-		for _, e := range info.Embeddings {
-			fmt.Printf("\t%s\n", e.TypeName)
-		}
+	componentInterface := inspector.GetInterface("Component")
 
-		for _, f := range info.Fields {
-			fmt.Printf("\t%v\n", f)
-		}
-
-		for _, m := range info.Methods {
-			fmt.Printf("\t%s\n", m.String())
+	fmt.Println()
+	fmt.Println("Found components:")
+	for _, s := range inspector.GetStructs() {
+		if componentInterface.CheckImplements(s) {
+			fmt.Println(s.Name)
 		}
 	}
 }

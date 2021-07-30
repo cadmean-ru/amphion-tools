@@ -2,13 +2,14 @@ package goinspect
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 )
 
 const MissingMethodsName = "MissingMethods"
 
 type FuncInfo struct {
-	Name       string
+	DeclarationInfo
 	Receiver   *FieldInfo
 	Parameters []*FieldInfo
 	Returns    []*FieldInfo
@@ -16,8 +17,10 @@ type FuncInfo struct {
 
 func (f FuncInfo) String() string {
 	recv := ""
+	pack := f.Package + "."
 	if f.Receiver != nil {
 		recv = "(" + f.Receiver.String() + ") "
+		pack = ""
 	}
 
 	params := make([]string, len(f.Parameters))
@@ -30,7 +33,7 @@ func (f FuncInfo) String() string {
 		returns[i] = r.String()
 	}
 
-	return fmt.Sprintf("func %s%s(%s) (%s)", recv, f.Name, strings.Join(params, ", "), strings.Join(returns, ", "))
+	return fmt.Sprintf("func %s%s%s(%s) (%s)", recv, pack, f.Name, strings.Join(params, ", "), strings.Join(returns, ", "))
 }
 
 func (f FuncInfo) Matches(other *FuncInfo) bool {
@@ -67,7 +70,9 @@ func (f FuncInfo) IsMethod() bool {
 
 func NewFuncInfo(name string) *FuncInfo {
 	return &FuncInfo{
-		Name:       name,
+		DeclarationInfo: DeclarationInfo{
+			Name: name,
+		},
 		Parameters: []*FieldInfo{},
 		Returns:    []*FieldInfo{},
 	}
@@ -75,9 +80,51 @@ func NewFuncInfo(name string) *FuncInfo {
 
 func NewMethodInfo(name string, receiver *FieldInfo) *FuncInfo {
 	return &FuncInfo{
-		Name:       name,
+		DeclarationInfo: DeclarationInfo{
+			Name: name,
+		},
 		Parameters: []*FieldInfo{},
 		Returns:    []*FieldInfo{},
 		Receiver:   receiver,
 	}
+}
+
+func tryParseFunc(node ast.Node, packageName string) (f *FuncInfo, ok bool) {
+	var decl *ast.FuncDecl
+	decl, ok = node.(*ast.FuncDecl)
+	if !ok {
+		return
+	}
+
+	var receiver *FieldInfo
+	if decl.Recv != nil {
+		receiver = parseFuncFieldList(decl.Recv)[0]
+	}
+
+	paramInfos := parseFuncFieldList(decl.Type.Params)
+	returnInfos := parseFuncFieldList(decl.Type.Results)
+
+	f = &FuncInfo{
+		DeclarationInfo: DeclarationInfo{
+			Name:    decl.Name.Name,
+			Package: packageName,
+		},
+		Receiver:   receiver,
+		Parameters: paramInfos,
+		Returns:    returnInfos,
+	}
+
+	return
+}
+
+func parseFuncFieldList(list *ast.FieldList) []*FieldInfo {
+	if list == nil || list.List == nil {
+		return []*FieldInfo{}
+	}
+
+	params := make([]*FieldInfo, 0, len(list.List))
+	for _, p := range list.List {
+		params = append(params, parseField(p)...)
+	}
+	return params
 }

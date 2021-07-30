@@ -61,37 +61,37 @@ func analyzeLines(path string) {
 func analyzeComponents(path string) {
 	inspector := goinspect.NewInspector()
 
-	err := inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/common")
+	err := inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion", "common")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/common/a")
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion", "common/a")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/rendering")
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion", "rendering")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/engine")
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion", "engine")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion/engine/builtin")
+	err = inspector.InspectSemantics("/Users/alex/Projects/AmphionEngine/amphion", "engine/builtin")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = inspector.InspectSemantics(path)
+	err = inspector.InspectSemantics(path, "components")
 	if err != nil {
 		fmt.Println(err)
 		return

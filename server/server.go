@@ -3,18 +3,22 @@ package server
 import (
 	"amphion-tools/analysis"
 	"amphion-tools/generators"
+	"amphion-tools/goinspect"
 	"amphion-tools/project"
 	"amphion-tools/settings"
 	"amphion-tools/support"
 	"amphion-tools/utils"
 	"errors"
 	"fmt"
+	ccolor "github.com/TwinProduction/go-color"
 	"gopkg.in/yaml.v2"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err error) {
@@ -28,23 +32,9 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 		return nil, fmt.Errorf("run configuration not found")
 	}
 
-	deps, err := analysis.GetProjectDependencies(filepath.Join(projectPath, config.Name))
+	amVersion, err := getAmphionVersion(filepath.Join(projectPath, config.Name))
 	if err != nil {
 		return nil, err
-	}
-
-	var ok bool
-	for _, dep := range deps {
-		if dep.Name == "github.com/cadmean-ru/amphion" {
-			if support.IsAmphionVersionSupported(dep.Version) {
-				ok = true
-			}
-			break
-		}
-	}
-
-	if !ok {
-		return nil, errors.New("unsupported amphion version")
 	}
 
 	settings.Current.LastProject = &settings.LastProject{
@@ -60,11 +50,36 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 		proj:      config,
 		projPath:  projectPath,
 		buildPath: filepath.Join(projectPath, "build"),
+		amVersion: amVersion,
 	}
 
 	return
 }
 
+func getAmphionVersion(codePath string) (string, error) {
+	deps, err := analysis.GetProjectDependencies(codePath)
+	if err != nil {
+		return "", err
+	}
+
+	var ok bool
+	var version string
+	for _, dep := range deps {
+		if dep.Name == "github.com/cadmean-ru/amphion" {
+			if support.IsAmphionVersionSupported(dep.Version) {
+				ok = true
+			}
+			version = dep.Version
+			break
+		}
+	}
+
+	if !ok {
+		return "nil", errors.New("unsupported amphion version")
+	}
+
+	return version, nil
+}
 
 type DevServer struct {
 	runConfig *project.RunConfig
@@ -74,6 +89,7 @@ type DevServer struct {
 	projPath  string
 	buildPath string
 	webDebug  *WebDebugServer
+	amVersion string
 }
 
 func (s *DevServer) Stop() {
@@ -116,6 +132,13 @@ func (s *DevServer) handleDirectoryUpdate() {
 }
 
 func (s *DevServer) BuildProject() error {
+	err := s.InspectCode()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Building project...")
+
 	switch s.runConfig.Frontend {
 	case "android":
 		return s.androidBuild()
@@ -124,6 +147,78 @@ func (s *DevServer) BuildProject() error {
 	default:
 		return s.defaultBuild()
 	}
+}
+
+func (s *DevServer) InspectCode() error {
+	if settings.Current.GoRoot == "" {
+		s.inputGoRoot()
+	}
+
+	fmt.Println("Running code inspection...")
+
+	amPath := filepath.Join(settings.Current.GoRoot, "pkg", "mod", "github.com", "cadmean-ru", "amphion@"+s.amVersion)
+	if !utils.Exists(amPath) {
+		return errors.New("amphion not found in GOPATH (try running 'go get')")
+	}
+
+	inspector := goinspect.NewInspector()
+	err := inspector.InspectSemantics(amPath, "common")
+	if err != nil {
+		return err
+	}
+
+	err = inspector.InspectSemantics(amPath, "common/a")
+	if err != nil {
+		return err
+	}
+
+	err = inspector.InspectSemantics(amPath, "rendering")
+	if err != nil {
+		return err
+	}
+
+	err = inspector.InspectSemantics(amPath, "engine")
+	if err != nil {
+		return err
+	}
+
+	err = inspector.InspectSemantics(amPath, "engine/builtin")
+	if err != nil {
+		return err
+	}
+
+	codePath := filepath.Join(s.projPath, s.proj.Name)
+
+	_ = filepath.Walk(codePath, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		relPath := strings.TrimPrefix(path, codePath)
+		relPath = strings.TrimPrefix(relPath, "/")
+		err = inspector.InspectSemantics(codePath, relPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	for _, msg := range inspector.InspectComponents() {
+		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
+	}
+
+	return nil
+}
+
+func (s *DevServer) inputGoRoot() {
+	fmt.Print("GOROOT no defined. Please enter a valid GOROOT path:")
+	fmt.Scanln(&settings.Current.GoRoot)
+	_, err := os.Stat(settings.Current.GoRoot)
+	if err != nil {
+		panic(err)
+	}
+	_ = settings.Save(settings.Current)
 }
 
 func (s *DevServer) defaultBuild() (err error) {
@@ -238,6 +333,8 @@ func (s *DevServer) RunProject() (err error) {
 	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {
 		return errors.New("cannot run on this frontend")
 	}
+
+	fmt.Println("Running project...")
 
 	//1. Copy files from corresponding frontend folder to run folder
 	frontendPath := filepath.Join(s.projPath, "frontend", s.runConfig.Frontend)

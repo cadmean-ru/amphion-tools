@@ -2,11 +2,13 @@ package goinspect
 
 import (
 	"fmt"
+	"go/ast"
+	"go/token"
 	"strings"
 )
 
 type StructInfo struct {
-	Name       string
+	DeclarationInfo
 	Methods    []*FuncInfo
 	Embeddings []*StructEmbeddingInfo
 	Fields     []*FieldInfo
@@ -15,7 +17,7 @@ type StructInfo struct {
 func (s *StructInfo) String() string {
 	sb := strings.Builder{}
 
-	sb.WriteString(fmt.Sprintf("struct %s\n", s.Name))
+	sb.WriteString(fmt.Sprintf("struct %s.%s\n", s.Package, s.Name))
 
 	for _, e := range s.Embeddings {
 		sb.WriteString(fmt.Sprintf("\tembeds %s\n", e.TypeName))
@@ -71,4 +73,60 @@ func (s *StructInfo) GetAllMethods() []*FuncInfo {
 type StructEmbeddingInfo struct {
 	FieldInfo
 	StructInfo *StructInfo
+}
+
+func tryParseStruct(node ast.Node, packageName string) (s *StructInfo, ok bool) {
+	var decl *ast.GenDecl
+	decl, ok = node.(*ast.GenDecl)
+	if !ok {
+		return
+	}
+
+	if decl.Tok != token.TYPE || len(decl.Specs) != 1 {
+		ok = false
+		return
+	}
+
+	typeSpec := decl.Specs[0].(*ast.TypeSpec)
+
+	structType, ok := typeSpec.Type.(*ast.StructType)
+	if !ok {
+		return
+	}
+
+	embeddings := make([]*StructEmbeddingInfo, 0)
+	fields := make([]*FieldInfo, 0)
+
+	if structType.Fields != nil {
+		fieldInfos := make([]*FieldInfo, 0, len(structType.Fields.List))
+		for _, f := range structType.Fields.List {
+			fieldInfos = append(fieldInfos, parseField(f)...)
+		}
+
+		for _, f := range fieldInfos {
+			//fmt.Println(f)
+
+			if f.Name == "_" {
+				embeddings = append(embeddings, &StructEmbeddingInfo{
+					FieldInfo:  *f,
+					StructInfo: nil,
+				})
+			} else {
+				fields = append(fields, f)
+			}
+		}
+	}
+
+	s = &StructInfo{
+		DeclarationInfo: DeclarationInfo{
+			Name:    typeSpec.Name.String(),
+			Package: packageName,
+		},
+		Methods:    []*FuncInfo{},
+		Embeddings: embeddings,
+		Fields:     fields,
+	}
+	ok = true
+
+	return
 }

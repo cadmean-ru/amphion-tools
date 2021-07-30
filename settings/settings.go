@@ -9,7 +9,10 @@ import (
 const FilePath = "settings.json"
 
 type Container struct {
-	LastProject *LastProject `json:"lastProject"`
+	LastProject    *LastProject `json:"lastProject"`
+	GoRoot         string       `json:"goroot"`
+	AndroidNdkHome string       `json:"androidNdkHome"`
+	AndroidHome    string       `json:"androidHome"`
 }
 
 var Current *Container

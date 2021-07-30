@@ -1,3 +1,5 @@
+github.com/TwinProduction/go-color v1.0.0 h1:8n59tqmLmt8jyRsY44RPy2ixPDDw0FcVoAhlYeyz3Jw=
+github.com/TwinProduction/go-color v1.0.0/go.mod h1:5hWpSyT+mmKPjCwPNEruBW5Dkbs/2PwOuU468ntEXNQ=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWoS4=

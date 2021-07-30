@@ -62,10 +62,11 @@ func serve(lastProjectPath string) {
 	err = s.BuildProject()
 	if err != nil {
 		fmt.Println(err)
-	}
-	err = s.RunProject()
-	if err != nil {
-		fmt.Println(err)
+	} else {
+		err = s.RunProject()
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	for {
@@ -79,13 +80,11 @@ func serve(lastProjectPath string) {
 
 		switch input {
 		case "build", "b":
-			fmt.Println("Building project...")
 			err = s.BuildProject()
 			if err != nil {
 				fmt.Printf("Build failed: %s\n", err)
 			}
 		case "run", "r":
-			fmt.Println("Running project...")
 			err = s.RunProject()
 			if err != nil {
 				fmt.Printf("Failed to run project: %s\n", err)

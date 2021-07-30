@@ -2,11 +2,13 @@ package goinspect
 
 import (
 	"fmt"
+	"go/ast"
+	"go/token"
 	"strings"
 )
 
 type InterfaceInfo struct {
-	Name       string
+	DeclarationInfo
 	Embeddings []*InterfaceEmbeddingInfo
 	Methods    []*FuncInfo
 }
@@ -61,7 +63,7 @@ func (i *InterfaceInfo) GetAllMethods() []*FuncInfo {
 func (i *InterfaceInfo) String() string {
 	sb := strings.Builder{}
 
-	sb.WriteString(fmt.Sprintf("interface %s\n", i.Name))
+	sb.WriteString(fmt.Sprintf("interface %s.%s\n", i.Package, i.Name))
 
 	for _, e := range i.Embeddings {
 		sb.WriteString(fmt.Sprintf("\tembeds %s\n", e.TypeName))
@@ -95,4 +97,58 @@ func (i *InterfaceInfo) String() string {
 type InterfaceEmbeddingInfo struct {
 	FieldInfo
 	InterfaceInfo *InterfaceInfo
+}
+
+func tryParseInterface(node ast.Node, packageName string) (i *InterfaceInfo, ok bool) {
+	var decl *ast.GenDecl
+	decl, ok = node.(*ast.GenDecl)
+	if !ok {
+		return
+	}
+
+	if decl.Tok != token.TYPE || len(decl.Specs) != 1 {
+		ok = false
+		return
+	}
+
+	typeSpec := decl.Specs[0].(*ast.TypeSpec)
+
+	interfaceType, ok := typeSpec.Type.(*ast.InterfaceType)
+	if !ok {
+		return
+	}
+
+	embeddings := make([]*InterfaceEmbeddingInfo, 0)
+	methods := make([]*FuncInfo, 0, 2)
+
+	for _, m := range interfaceType.Methods.List {
+		if m.Names == nil || len(m.Names) == 0 {
+			embeddings = append(embeddings, &InterfaceEmbeddingInfo{
+				FieldInfo:     *(parseField(m)[0]),
+				InterfaceInfo: nil,
+			})
+		} else {
+			methods = append(methods, &FuncInfo{
+				DeclarationInfo: DeclarationInfo{
+					Name:    m.Names[0].Name,
+					Package: packageName,
+				},
+				Receiver:   nil,
+				Parameters: parseFuncFieldList(m.Type.(*ast.FuncType).Params),
+				Returns:    parseFuncFieldList(m.Type.(*ast.FuncType).Results),
+			})
+		}
+	}
+
+	i = &InterfaceInfo{
+		DeclarationInfo: DeclarationInfo{
+			Name:    typeSpec.Name.Name,
+			Package: packageName,
+		},
+		Embeddings: embeddings,
+		Methods:    methods,
+	}
+	ok = true
+
+	return
 }

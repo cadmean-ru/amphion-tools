@@ -5,6 +5,7 @@ import (
 	"amphion-tools/generators"
 	"amphion-tools/goinspect"
 	"amphion-tools/project"
+	"amphion-tools/resinspect"
 	"amphion-tools/settings"
 	"amphion-tools/support"
 	"amphion-tools/utils"
@@ -44,13 +45,20 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 	_ = settings.Save(settings.Current)
 
 	s = &DevServer{
-		runConfig: runConfig,
-		done:      make(chan bool, 1),
-		stopped:   false,
-		proj:      config,
-		projPath:  projectPath,
-		buildPath: filepath.Join(projectPath, "build"),
-		amVersion: amVersion,
+		runConfig:    runConfig,
+		done:         make(chan bool, 1),
+		stopped:      false,
+		proj:         config,
+		projPath:     projectPath,
+		buildPath:    filepath.Join(projectPath, "build"),
+		amVersion:    amVersion,
+		goInspector:  goinspect.NewInspector(),
+		resInspector: resinspect.NewInspector(),
+	}
+
+	err = s.prepareInspector()
+	if err != nil {
+		return nil, err
 	}
 
 	return
@@ -82,14 +90,16 @@ func getAmphionVersion(codePath string) (string, error) {
 }
 
 type DevServer struct {
-	runConfig *project.RunConfig
-	done      chan bool
-	stopped   bool
-	proj      *project.Config
-	projPath  string
-	buildPath string
-	webDebug  *WebDebugServer
-	amVersion string
+	runConfig    *project.RunConfig
+	done         chan bool
+	stopped      bool
+	proj         *project.Config
+	projPath     string
+	buildPath    string
+	webDebug     *WebDebugServer
+	amVersion    string
+	goInspector  *goinspect.Inspector
+	resInspector *resinspect.Inspector
 }
 
 func (s *DevServer) Stop() {
@@ -108,11 +118,7 @@ func (s *DevServer) Start() {
 	_ = os.Mkdir("./run", os.FileMode(0777))
 	_ = os.Mkdir(s.buildPath, os.FileMode(0777))
 
-
 	s.stopped = false
-
-	//dirs := []string { filepath.Join(s.projPath, "res"), filepath.Join(s.projPath, s.proj.Name) }
-	//go utils.WatchDirs(dirs, s.done, s.handleDirectoryUpdate)
 
 	if s.runConfig.Frontend == "web" {
 		go utils.HttpServeDir("./run", s.runConfig.Url, s.done)
@@ -127,6 +133,45 @@ func (s *DevServer) Start() {
 	}
 }
 
+func (s *DevServer) prepareInspector() error {
+	amPath := filepath.Join(settings.Current.GoRoot, "pkg", "mod", "github.com", "cadmean-ru", "amphion@"+s.amVersion)
+	if !utils.Exists(amPath) {
+		return errors.New("amphion not found in GOPATH (try running 'go get')")
+	}
+
+	codePath := filepath.Join(s.projPath, s.proj.Name)
+
+	amScope := s.goInspector.NewScope("amphion", amPath)
+	_ = s.goInspector.NewScope("project", codePath)
+
+	err := s.goInspector.InspectSemantics(amScope, "common")
+	if err != nil {
+		return err
+	}
+
+	err = s.goInspector.InspectSemantics(amScope, "common/a")
+	if err != nil {
+		return err
+	}
+
+	err = s.goInspector.InspectSemantics(amScope, "rendering")
+	if err != nil {
+		return err
+	}
+
+	err = s.goInspector.InspectSemantics(amScope, "engine")
+	if err != nil {
+		return err
+	}
+
+	err = s.goInspector.InspectSemantics(amScope, "engine/builtin")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *DevServer) handleDirectoryUpdate() {
 	//_ = s.BuildProject()
 }
@@ -139,13 +184,21 @@ func (s *DevServer) BuildProject() error {
 
 	fmt.Println("Building project...")
 
+	resources := s.resInspector.FindResources(s.projPath, s.proj)
+	mainData := generators.MakeMainTemplateData(s.runConfig, resources)
+
+	err = s.generateCommon(mainData)
+	if err != nil {
+		return err
+	}
+
 	switch s.runConfig.Frontend {
 	case "android":
-		return s.androidBuild()
+		return s.androidBuild(mainData)
 	case "ios":
-		return s.iosBuild()
+		return s.iosBuild(mainData)
 	default:
-		return s.defaultBuild()
+		return s.defaultBuild(mainData)
 	}
 }
 
@@ -156,47 +209,17 @@ func (s *DevServer) InspectCode() error {
 
 	fmt.Println("Running code inspection...")
 
-	amPath := filepath.Join(settings.Current.GoRoot, "pkg", "mod", "github.com", "cadmean-ru", "amphion@"+s.amVersion)
-	if !utils.Exists(amPath) {
-		return errors.New("amphion not found in GOPATH (try running 'go get')")
-	}
+	prScope := s.goInspector.GetScope("project")
+	prScope.Clear()
 
-	inspector := goinspect.NewInspector()
-	err := inspector.InspectSemantics(amPath, "common")
-	if err != nil {
-		return err
-	}
-
-	err = inspector.InspectSemantics(amPath, "common/a")
-	if err != nil {
-		return err
-	}
-
-	err = inspector.InspectSemantics(amPath, "rendering")
-	if err != nil {
-		return err
-	}
-
-	err = inspector.InspectSemantics(amPath, "engine")
-	if err != nil {
-		return err
-	}
-
-	err = inspector.InspectSemantics(amPath, "engine/builtin")
-	if err != nil {
-		return err
-	}
-
-	codePath := filepath.Join(s.projPath, s.proj.Name)
-
-	_ = filepath.Walk(codePath, func(path string, info fs.FileInfo, err error) error {
+	_ = filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			return nil
 		}
 
-		relPath := strings.TrimPrefix(path, codePath)
+		relPath := strings.TrimPrefix(path, prScope.Path)
 		relPath = strings.TrimPrefix(relPath, "/")
-		err = inspector.InspectSemantics(codePath, relPath)
+		err = s.goInspector.InspectSemantics(prScope, relPath)
 		if err != nil {
 			return err
 		}
@@ -204,7 +227,7 @@ func (s *DevServer) InspectCode() error {
 		return nil
 	})
 
-	for _, msg := range inspector.InspectComponents() {
+	for _, msg := range s.goInspector.InspectComponents(prScope) {
 		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
 	}
 
@@ -221,7 +244,20 @@ func (s *DevServer) inputGoRoot() {
 	_ = settings.Save(settings.Current)
 }
 
-func (s *DevServer) defaultBuild() (err error) {
+func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err error) {
+	err = generators.Res(mainData, s.projPath, s.proj)
+	if err != nil {
+		return
+	}
+
+	components := s.goInspector.GetExportedComponents(s.goInspector.GetScope(goinspect.ProjectScope))
+	compData := generators.MakeCompFileTemplateData(components)
+	err = generators.Comp(compData, s.projPath, s.proj)
+
+	return
+}
+
+func (s *DevServer) defaultBuild(mainData *generators.MainTemplateData) (err error) {
 	srcPath := filepath.Join(s.projPath, s.proj.Name)
 
 	//0. Copy builtin res folder to run folder
@@ -232,12 +268,7 @@ func (s *DevServer) defaultBuild() (err error) {
 	}
 
 	//1. Generate code
-	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
-	err = generators.Main(data, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-	err = generators.Res(data, s.projPath, s.proj)
+	err = generators.Main(mainData, s.projPath, s.proj, s.runConfig)
 	if err != nil {
 		return
 	}
@@ -269,26 +300,21 @@ func (s *DevServer) defaultBuild() (err error) {
 	return
 }
 
-func (s *DevServer) androidBuild() (err error) {
+func (s *DevServer) androidBuild(mainData *generators.MainTemplateData) (err error) {
 	srcPath := filepath.Join(s.projPath, s.proj.Name)
 
 	//1. Generate code
-	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
-	err = generators.AndroidMain(data, s.projPath, s.proj, s.runConfig)
+	err = generators.AndroidMain(mainData, s.projPath, s.proj, s.runConfig)
 	if err != nil {
 		return
 	}
-	err = generators.Android(data, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-	err = generators.Res(data, s.projPath, s.proj)
+	err = generators.Android(mainData, s.projPath, s.proj, s.runConfig)
 	if err != nil {
 		return
 	}
 
 	//2. Run gomobile bind
-	var dstPath = filepath.Join(s.buildPath, s.proj.Name + ".android.aar")
+	var dstPath = filepath.Join(s.buildPath, s.proj.Name+".android.aar")
 
 	err = s.goMobileBind("android", srcPath, dstPath)
 
@@ -299,20 +325,15 @@ func (s *DevServer) androidBuild() (err error) {
 	return
 }
 
-func (s *DevServer) iosBuild() (err error) {
+func (s *DevServer) iosBuild(mainData *generators.MainTemplateData) (err error) {
 	srcPath := filepath.Join(s.projPath, s.proj.Name)
 
 	//1. Generate code
-	data := generators.MakeMainTemplateData(s.projPath, s.proj, s.runConfig)
-	err = generators.IosMain(data, s.projPath, s.proj, s.runConfig)
+	err = generators.IosMain(mainData, s.projPath, s.proj, s.runConfig)
 	if err != nil {
 		return
 	}
-	err = generators.Ios(data, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-	err = generators.Res(data, s.projPath, s.proj)
+	err = generators.Ios(mainData, s.projPath, s.proj, s.runConfig)
 	if err != nil {
 		return
 	}
@@ -411,8 +432,8 @@ func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
 	build := exec.Command("go", "build", "-o", outFilePath)
 	build.Dir = srcPath
 	build.Env = os.Environ()
-	build.Env = append(build.Env, "GOOS=" + goos)
-	build.Env = append(build.Env, "GOARCH=" + goarch)
+	build.Env = append(build.Env, "GOOS="+goos)
+	build.Env = append(build.Env, "GOARCH="+goarch)
 	build.Stdout = os.Stdout
 	build.Stderr = os.Stderr
 
@@ -431,10 +452,10 @@ func (s *DevServer) goMobileBind(target, srcPath, dstFilePath string) (err error
 	if target == "android" {
 		bind = exec.Command("gomobile",
 			"bind",
-			"-target=" + target,
+			"-target="+target,
 			"-o", dstFilePath,
 			"-javapkg=ru.cadmean.amphion.android",
-			s.proj.Name + "/generated/droidCli",
+			s.proj.Name+"/generated/droidCli",
 			"github.com/cadmean-ru/amphion/frontend/cli",
 			"github.com/cadmean-ru/amphion/common/atext",
 			"github.com/cadmean-ru/amphion/common/dispatch",
@@ -442,9 +463,9 @@ func (s *DevServer) goMobileBind(target, srcPath, dstFilePath string) (err error
 	} else {
 		bind = exec.Command("gomobile",
 			"bind",
-			"-target=" + target,
+			"-target="+target,
 			"-o", dstFilePath,
-			s.proj.Name + "/generated/iosCli",
+			s.proj.Name+"/generated/iosCli",
 			"github.com/cadmean-ru/amphion/frontend/cli",
 			"github.com/cadmean-ru/amphion/common/atext",
 			"github.com/cadmean-ru/amphion/common/dispatch",

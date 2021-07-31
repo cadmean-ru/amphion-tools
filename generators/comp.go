@@ -1,9 +1,12 @@
 package generators
 
 import (
+	"amphion-tools/goinspect"
 	"amphion-tools/project"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -21,16 +24,15 @@ import (
 )
 
 {{ range $comp := .Components }}
-	const {{ $comp.LastPackage }}_{{ $comp.Name }} = "{{ $comp.FullName }}"
+const {{ $comp.LastPackageU }}_{{ $comp.Name }} = "{{ $comp.FullName }}"
 
-	func Get_{{ $comp.LastPackage }}_{{ $comp.Name }}(so *engine.SceneObject, includeDirty ...bool) *{{ $comp.LastPackage }}{{ $comp.Name }} {
-		return so.GetComponentByName({{ $comp.FullName }}, includeDirty...).(*{{ $comp.LastPackage }}.{{ $comp.Name }})
-	}
+func Get_{{ $comp.LastPackage }}_{{ $comp.Name }}(so *engine.SceneObject, includeDirty ...bool) *{{ $comp.LastPackage }}.{{ $comp.Name }} {
+	return so.GetComponentByName("{{ $comp.FullName }}", includeDirty...).(*{{ $comp.LastPackage }}.{{ $comp.Name }})
+}
 
-	func Get_{{ $comp.LastPackage }}_{{ $comp.Name }}(so *engine.SceneObject, includeDirty ...bool) *{{ $comp.LastPackage }}{{ $comp.Name }} {
-		return so.FindComponentByName({{ $comp.FullName }}, includeDirty...).(*{{ $comp.LastPackage }}.{{ $comp.Name }})
-	}
-
+func Find_{{ $comp.LastPackage }}_{{ $comp.Name }}(so *engine.SceneObject, includeDirty ...bool) *{{ $comp.LastPackage }}.{{ $comp.Name }} {
+	return so.FindComponentByName("{{ $comp.FullName }}", includeDirty...).(*{{ $comp.LastPackage }}.{{ $comp.Name }})
+}
 {{ end }}
 `
 
@@ -40,12 +42,13 @@ type CompFileTemplateData struct {
 }
 
 type CompTemplateData struct {
-	Name        string
-	LastPackage string
-	FullName    string
+	Name         string
+	LastPackage  string
+	FullName     string
+	LastPackageU string
 }
 
-func Comp(data CompFileTemplateData, projPath string, config *project.Config) error {
+func Comp(data *CompFileTemplateData, projPath string, config *project.Config) error {
 	codePath := filepath.Join(projPath, config.Name)
 	compTmpl := template.Must(template.New("comp").Parse(compFileTemplate))
 
@@ -59,4 +62,38 @@ func Comp(data CompFileTemplateData, projPath string, config *project.Config) er
 
 	err = compTmpl.Execute(compFile, data)
 	return nil
+}
+
+func MakeCompFileTemplateData(components []*goinspect.StructInfo) *CompFileTemplateData {
+	data := &CompFileTemplateData{
+		Imports:    make([]string, 0),
+		Components: make([]CompTemplateData, 0),
+	}
+
+	for _, comp := range components {
+		var importFound bool
+		for _, i := range data.Imports {
+			if i == comp.Package {
+				importFound = true
+				break
+			}
+		}
+
+		if !importFound {
+			data.Imports = append(data.Imports, comp.Package)
+		}
+
+		packageTokens := strings.Split(comp.Package, "/")
+		lastPackage := packageTokens[len(packageTokens)-1]
+		lastPackageU := strings.ToUpper(string(lastPackage[0])) + lastPackage[1:]
+
+		data.Components = append(data.Components, CompTemplateData{
+			Name:         comp.Name,
+			FullName:     fmt.Sprintf("%s.%s", comp.Package, comp.Name),
+			LastPackage:  lastPackage,
+			LastPackageU: lastPackageU,
+		})
+	}
+
+	return data
 }

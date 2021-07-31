@@ -36,25 +36,3 @@ func Res(data *MainTemplateData, projPath string, config *project.Config) (err e
 	err = resTmpl.Execute(resFile, *data)
 	return
 }
-
-func findResources(data *MainTemplateData, projPath string, config *project.Config) {
-	resPath := filepath.Join(projPath, "res")
-
-	_ = filepath.Walk(resPath, func(path string, info os.FileInfo, err error) error {
-		if info.Name()[0] == '.' || info.IsDir() {
-			return nil
-		}
-
-		sPath := stripResPath(config.Name, path)
-		n := resName(sPath)
-
-		if !validVarName.MatchString(n) {
-			return nil
-		}
-
-		data.Resources = append(data.Resources, sPath)
-		data.ResNames = append(data.ResNames, n)
-
-		return nil
-	})
-}

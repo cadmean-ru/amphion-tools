@@ -8,59 +8,80 @@ import (
 	"path/filepath"
 )
 
+const (
+	AmphionScope = "amphion"
+	ProjectScope = "project"
+)
+
 type Inspector struct {
-	functions  []*FuncInfo
-	structs    []*StructInfo
-	interfaces []*InterfaceInfo
+	scopes []*Scope
+	amphionScope *Scope
+	projectScope *Scope
 }
 
-func (i *Inspector) GetFunctions() []*FuncInfo {
-	return i.functions
+func (i *Inspector) NewScope(name, path string) *Scope {
+	s := &Scope{
+		Name:       name,
+		Path:       path,
+		functions:  map[string]*FuncInfo{},
+		structs:    map[string]*StructInfo{},
+		interfaces: map[string]*InterfaceInfo{},
+	}
+
+	i.scopes = append(i.scopes, s)
+
+	if name == AmphionScope {
+		i.amphionScope = s
+	} else if name == ProjectScope {
+		i.projectScope = s
+	}
+
+	return s
 }
 
-func (i *Inspector) GetFunction(name string) *FuncInfo {
-	for _, f := range i.functions {
-		if f.Name == name {
-			return f
+func (i *Inspector) GetScope(name string) *Scope {
+	if name == AmphionScope {
+		return i.amphionScope
+	} else if name == ProjectScope {
+		return i.projectScope
+	}
+
+	for _, scope := range i.scopes {
+		if scope.Name == name {
+			return scope
 		}
 	}
 
 	return nil
 }
 
-func (i *Inspector) GetStructs() []*StructInfo {
-	return i.structs
+func (i *Inspector) ForEachScope(action func(scope *Scope) bool) {
+	for _, s := range i.scopes {
+		if !action(s) {
+			return
+		}
+	}
 }
 
-func (i *Inspector) GetStruct(name string) *StructInfo {
-	for _, s := range i.structs {
-		if s.Name == name {
-			return s
+func (i *Inspector) GetExportedComponents(scope *Scope) []*StructInfo {
+	comps := make([]*StructInfo, 0, 10)
+
+	componentInterface := i.amphionScope.GetInterface("Component")
+
+	for _, s := range scope.GetStructs() {
+		if s.IsExported() && componentInterface.CheckImplements(s) {
+			comps = append(comps, s)
 		}
 	}
 
-	return nil
+	return comps
 }
 
-func (i *Inspector) GetInterfaces() []*InterfaceInfo {
-	return i.interfaces
-}
-
-func (i *Inspector) GetInterface(name string) *InterfaceInfo {
-	for _, ii := range i.interfaces {
-		if ii.Name == name {
-			return ii
-		}
-	}
-
-	return nil
-}
-
-func (i *Inspector) InspectComponents() []string {
-	componentInterface := i.GetInterface("Component")
+func (i *Inspector) InspectComponents(scope *Scope) []string {
 	messages := make([]string, 0, 10)
+	componentInterface := i.amphionScope.GetInterface("Component")
 
-	for _, cs := range i.GetStructs() {
+	for _, cs := range scope.GetStructs() {
 		if componentInterface.CheckImplements(cs) {
 			messages = append(messages, i.InspectComponent(cs)...)
 		}
@@ -99,36 +120,36 @@ func (i *Inspector) InspectComponent(comp *StructInfo) []string {
 	return messages
 }
 
-func (i *Inspector) InspectSemantics(projectPath, projectRelativePath string) error {
-	projectPath = filepath.Clean(projectPath)
-	projectRelativePath = filepath.Clean(projectRelativePath)
+func (i *Inspector) InspectSemantics(scope *Scope, scopeRelativePath string) error {
+	projectPath := filepath.Clean(scope.Path)
+	scopeRelativePath = filepath.Clean(scopeRelativePath)
 
-	path := filepath.Join(projectPath, projectRelativePath)
+	path := filepath.Join(projectPath, scopeRelativePath)
 	goMod, err := ParseGoMod(projectPath)
 	if err != nil {
 		return err
 	}
 
-	packageName := goMod.ModuleName + "/" + projectRelativePath
+	packageName := goMod.ModuleName + "/" + scopeRelativePath
 	structs, funcs, interfaces, err := i.findDeclarations(path, packageName)
 	if err != nil {
 		return err
 	}
 
 	i.findMethods(structs, funcs)
-	i.findTopLevelFunctions(funcs)
-	i.structs = append(i.structs, structs...)
-	i.interfaces = append(i.interfaces, interfaces...)
+	i.findTopLevelFunctions(scope, funcs)
+	scope.AddStructs(structs...)
+	scope.AddInterfaces(interfaces...)
 	i.inspectStructEmbeddings(structs)
 	i.inspectInterfaceEmbeddings(interfaces)
 
 	return nil
 }
 
-func (i *Inspector) findTopLevelFunctions(funcs []*FuncInfo) {
+func (i *Inspector) findTopLevelFunctions(scope *Scope, funcs []*FuncInfo) {
 	for _, f := range funcs {
 		if !f.IsMethod() {
-			i.functions = append(i.functions, f)
+			scope.functions[f.Name] = f
 		}
 	}
 }
@@ -136,12 +157,15 @@ func (i *Inspector) findTopLevelFunctions(funcs []*FuncInfo) {
 func (i *Inspector) inspectStructEmbeddings(structs []*StructInfo) {
 	for _, s := range structs {
 		for _, e := range s.Embeddings {
-			for _, ss := range i.structs {
-				if e.TypeName == ss.Name {
-					e.StructInfo = ss
-					break
+			i.ForEachScope(func(scope *Scope) bool {
+				for _, ss := range scope.structs {
+					if e.TypeName == ss.Name {
+						e.StructInfo = ss
+						return false
+					}
 				}
-			}
+				return true
+			})
 		}
 	}
 }
@@ -149,12 +173,15 @@ func (i *Inspector) inspectStructEmbeddings(structs []*StructInfo) {
 func (i *Inspector) inspectInterfaceEmbeddings(structs []*InterfaceInfo) {
 	for _, ii := range structs {
 		for _, e := range ii.Embeddings {
-			for _, iii := range i.interfaces {
-				if e.TypeName == iii.Name {
-					e.InterfaceInfo = iii
-					break
+			i.ForEachScope(func(scope *Scope) bool {
+				for _, iii := range scope.interfaces {
+					if e.TypeName == iii.Name {
+						e.InterfaceInfo = iii
+						return false
+					}
 				}
-			}
+				return true
+			})
 		}
 	}
 }
@@ -202,8 +229,6 @@ func (i *Inspector) findDeclarations(codePath, fullPackageName string) ([]*Struc
 
 func NewInspector() *Inspector {
 	return &Inspector{
-		functions:  []*FuncInfo{},
-		structs:    []*StructInfo{},
-		interfaces: []*InterfaceInfo{},
+		scopes: make([]*Scope, 0, 2),
 	}
 }

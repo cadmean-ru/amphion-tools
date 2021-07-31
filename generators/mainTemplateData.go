@@ -1,6 +1,9 @@
 package generators
 
-import "amphion-tools/project"
+import (
+	"amphion-tools/project"
+	"amphion-tools/resinspect"
+)
 
 type MainTemplateData struct {
 	Frontend  string
@@ -8,10 +11,18 @@ type MainTemplateData struct {
 	ResNames  []string
 }
 
-func MakeMainTemplateData(projPath string, config *project.Config, runConfig *project.RunConfig) *MainTemplateData {
+func MakeMainTemplateData(runConfig *project.RunConfig, resources []*resinspect.ResInfo) *MainTemplateData {
 	data := &MainTemplateData{
 		Frontend:  runConfig.Frontend,
 	}
-	findResources(data, projPath, config)
+
+	data.Resources = make([]string, len(resources))
+	data.ResNames = make([]string, len(resources))
+
+	for i, ri := range resources {
+		data.Resources[i] = ri.Path
+		data.ResNames[i] = ri.Name
+	}
+
 	return data
 }

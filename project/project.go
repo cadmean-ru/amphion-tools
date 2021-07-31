@@ -51,7 +51,7 @@ func ParseConfig(configFilePath string) (config *Config, err error) {
 func FindProjectConfig(projectPath string) (config *Config, err error) {
 	_, name := filepath.Split(projectPath)
 
-	configFilePath := filepath.Join(projectPath, name + ".config.yaml")
+	configFilePath := filepath.Join(projectPath, name+".config.yaml")
 
 	config, err = ParseConfig(configFilePath)
 	return

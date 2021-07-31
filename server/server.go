@@ -141,8 +141,8 @@ func (s *DevServer) prepareInspector() error {
 
 	codePath := filepath.Join(s.projPath, s.proj.Name)
 
-	amScope := s.goInspector.NewScope("amphion", amPath)
-	_ = s.goInspector.NewScope("project", codePath)
+	amScope, _ := s.goInspector.NewScope("amphion", amPath)
+	_, _ = s.goInspector.NewScope("project", codePath)
 
 	err := s.goInspector.InspectSemantics(amScope, "common")
 	if err != nil {
@@ -185,7 +185,13 @@ func (s *DevServer) BuildProject() error {
 	fmt.Println("Building project...")
 
 	resources := s.resInspector.FindResources(s.projPath, s.proj)
-	mainData := generators.MakeMainTemplateData(s.runConfig, resources)
+
+	projScope := s.goInspector.GetScope(goinspect.ProjectScope)
+	components := s.goInspector.GetExportedComponents(projScope)
+	components = append(components, s.goInspector.GetExportedComponents(s.goInspector.GetScope(goinspect.AmphionScope))...)
+	compData := generators.MakeCompFileTemplateData(components, projScope.Module)
+
+	mainData := generators.MakeMainTemplateData(s.runConfig, resources, compData)
 
 	err = s.generateCommon(mainData)
 	if err != nil {
@@ -202,57 +208,42 @@ func (s *DevServer) BuildProject() error {
 	}
 }
 
-func (s *DevServer) InspectCode() error {
-	if settings.Current.GoRoot == "" {
-		s.inputGoRoot()
-	}
-
-	fmt.Println("Running code inspection...")
-
-	prScope := s.goInspector.GetScope("project")
-	prScope.Clear()
-
-	_ = filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
-		if !info.IsDir() {
-			return nil
-		}
-
-		relPath := strings.TrimPrefix(path, prScope.Path)
-		relPath = strings.TrimPrefix(relPath, "/")
-		err = s.goInspector.InspectSemantics(prScope, relPath)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	for _, msg := range s.goInspector.InspectComponents(prScope) {
-		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
-	}
-
-	return nil
-}
-
-func (s *DevServer) inputGoRoot() {
-	fmt.Print("GOROOT no defined. Please enter a valid GOROOT path:")
-	fmt.Scanln(&settings.Current.GoRoot)
-	_, err := os.Stat(settings.Current.GoRoot)
-	if err != nil {
-		panic(err)
-	}
-	_ = settings.Save(settings.Current)
-}
-
 func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err error) {
 	err = generators.Res(mainData, s.projPath, s.proj)
 	if err != nil {
 		return
 	}
 
-	components := s.goInspector.GetExportedComponents(s.goInspector.GetScope(goinspect.ProjectScope))
-	compData := generators.MakeCompFileTemplateData(components)
-	err = generators.Comp(compData, s.projPath, s.proj)
+	scope := s.goInspector.GetScope(goinspect.ProjectScope)
+	components := s.goInspector.GetExportedComponents(scope)
+	codePath := s.proj.GetCodePath(s.projPath)
+
+	err = filepath.Walk(codePath, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		packageComponents := make([]*goinspect.StructInfo, 0, len(components))
+		relPath := strings.TrimPrefix(path, scope.Path)
+		relPath = strings.TrimPrefix(relPath, "/")
+		packagePath := scope.Module + "/" + relPath
+		packagePath = strings.TrimSuffix(packagePath, "/")
+
+		for _, comp := range components {
+			if comp.Package != packagePath {
+				continue
+			}
+
+			packageComponents = append(packageComponents, comp)
+		}
+
+		if len(packageComponents) == 0 {
+			return nil
+		}
+
+		data := generators.MakeCompFileTemplateData(packageComponents, packagePath)
+		return generators.Comp(data, path)
+	})
 
 	return
 }
@@ -348,6 +339,48 @@ func (s *DevServer) iosBuild(mainData *generators.MainTemplateData) (err error) 
 	}
 
 	return
+}
+
+func (s *DevServer) InspectCode() error {
+	if settings.Current.GoRoot == "" {
+		s.inputGoRoot()
+	}
+
+	fmt.Println("Running code inspection...")
+
+	prScope := s.goInspector.GetScope("project")
+	prScope.Clear()
+
+	_ = filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		relPath := strings.TrimPrefix(path, prScope.Path)
+		relPath = strings.TrimPrefix(relPath, "/")
+		err = s.goInspector.InspectSemantics(prScope, relPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	for _, msg := range s.goInspector.InspectComponents(prScope) {
+		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
+	}
+
+	return nil
+}
+
+func (s *DevServer) inputGoRoot() {
+	fmt.Print("GOROOT no defined. Please enter a valid GOROOT path:")
+	fmt.Scanln(&settings.Current.GoRoot)
+	_, err := os.Stat(settings.Current.GoRoot)
+	if err != nil {
+		panic(err)
+	}
+	_ = settings.Save(settings.Current)
 }
 
 func (s *DevServer) RunProject() (err error) {

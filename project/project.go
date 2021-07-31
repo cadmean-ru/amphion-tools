@@ -26,6 +26,10 @@ func (c *Config) GetRunConfig(name string) *RunConfig {
 	return nil
 }
 
+func (c *Config) GetCodePath(path string) string {
+	return filepath.Join(path, c.Name)
+}
+
 type RunConfig struct {
 	Name     string `yaml:"name"`
 	Frontend string `yaml:"frontend"`

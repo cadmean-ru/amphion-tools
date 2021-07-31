@@ -44,7 +44,7 @@ func (s *WebDebugServer) home(w http.ResponseWriter, _ *http.Request) {
 func (s *WebDebugServer) handleWsUpgrade(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Method", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-PackageDot, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
 	ws, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {

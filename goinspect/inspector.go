@@ -14,15 +14,21 @@ const (
 )
 
 type Inspector struct {
-	scopes []*Scope
+	scopes       []*Scope
 	amphionScope *Scope
 	projectScope *Scope
 }
 
-func (i *Inspector) NewScope(name, path string) *Scope {
+func (i *Inspector) NewScope(name, path string) (*Scope, error) {
+	goMod, err := ParseGoMod(path)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Scope{
 		Name:       name,
 		Path:       path,
+		Module:     goMod.ModuleName,
 		functions:  map[string]*FuncInfo{},
 		structs:    map[string]*StructInfo{},
 		interfaces: map[string]*InterfaceInfo{},
@@ -36,7 +42,7 @@ func (i *Inspector) NewScope(name, path string) *Scope {
 		i.projectScope = s
 	}
 
-	return s
+	return s, nil
 }
 
 func (i *Inspector) GetScope(name string) *Scope {
@@ -97,8 +103,8 @@ func (i *Inspector) InspectComponent(comp *StructInfo) []string {
 			Package: "",
 		},
 		Receiver:   nil,
-		Parameters: []*FieldInfo {},
-		Returns:    []*FieldInfo {{
+		Parameters: []*FieldInfo{},
+		Returns: []*FieldInfo{{
 			Name:        "_",
 			TypeName:    "string",
 			PassageKind: ByValue,

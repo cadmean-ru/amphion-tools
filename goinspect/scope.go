@@ -3,6 +3,7 @@ package goinspect
 type Scope struct {
 	Name       string
 	Path       string
+	Module     string
 	functions  map[string]*FuncInfo
 	structs    map[string]*StructInfo
 	interfaces map[string]*InterfaceInfo

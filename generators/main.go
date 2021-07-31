@@ -15,10 +15,12 @@ package main
 
 import (
 	"github.com/cadmean-ru/amphion/engine"
-	"github.com/cadmean-ru/amphion/engine/builtin"
 	"github.com/cadmean-ru/amphion/frontend/{{ .Frontend }}"
 {{ if (eq .Frontend "pc") }}
 	"runtime"
+{{ end }}
+{{ range $imp := .CompData.Imports }}
+	"{{ $imp }}"
 {{ end }}
 )
 
@@ -36,20 +38,10 @@ func runApp() {
 	e := engine.Initialize(front)
 
 	cm := e.GetComponentsManager()
-	cm.RegisterComponentType(&builtin.ShapeView{})
-	cm.RegisterComponentType(&builtin.CircleBoundary{})
-	cm.RegisterComponentType(&builtin.OnClickListener{})
-	cm.RegisterComponentType(&builtin.TextView{})
-	cm.RegisterComponentType(&builtin.RectBoundary{})
-	cm.RegisterComponentType(&builtin.TriangleBoundary{})
-	cm.RegisterComponentType(&builtin.BezierView{})
-	cm.RegisterComponentType(&builtin.DropdownView{})
-	cm.RegisterComponentType(&builtin.ImageView{})
-	cm.RegisterComponentType(&builtin.MouseMover{})
-	cm.RegisterComponentType(&builtin.BuilderComponent{})
-	cm.RegisterComponentType(&builtin.GridLayout{})
-	cm.RegisterComponentType(&builtin.NativeInputView{})
-	cm.RegisterComponentType(&builtin.EventListener{})
+
+{{ range $comp := .CompData.Components }}
+	cm.RegisterComponentType(&{{ $comp.LastPackage }}.{{ $comp.Name }}{})
+{{ end }}
 
 	registerComponents(cm)
 	

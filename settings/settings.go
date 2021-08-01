@@ -2,6 +2,7 @@ package settings
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -48,4 +49,15 @@ func Save(container *Container) (err error) {
 
 func Default() *Container {
 	return &Container{}
+}
+
+func InputGoRoot() (err error) {
+	fmt.Print("Please enter a valid GOROOT path:")
+	fmt.Scanln(&Current.GoRoot)
+	_, err = os.Stat(Current.GoRoot)
+	if err != nil {
+		return
+	}
+	err = Save(Current)
+	return
 }

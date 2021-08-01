@@ -41,6 +41,8 @@ func main() {
 		analyze()
 	case "dev-serve":
 		devServe()
+	case "dev-generate":
+		devGenerate()
 	default:
 		fmt.Println("Unknown command")
 	}

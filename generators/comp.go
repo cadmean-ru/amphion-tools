@@ -46,10 +46,10 @@ type CompTemplateData struct {
 	PackageDot string
 }
 
-func Comp(data *CompFileTemplateData, dirPath string) error {
+func Comp(data *CompFileTemplateData, dirPath, fileName string) error {
 	compTmpl := template.Must(template.New("comp").Parse(compFileTemplate))
 
-	compFile, err := os.Create(filepath.Join(dirPath, "comp.gen.go"))
+	compFile, err := os.Create(filepath.Join(dirPath, fileName))
 	if err != nil {
 		return err
 	}

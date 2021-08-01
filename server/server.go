@@ -136,7 +136,7 @@ func (s *DevServer) Start() {
 func (s *DevServer) prepareInspector() error {
 	amPath := filepath.Join(settings.Current.GoRoot, "pkg", "mod", "github.com", "cadmean-ru", "amphion@"+s.amVersion)
 	if !utils.Exists(amPath) {
-		return errors.New("amphion not found in GOPATH (try running 'go get')")
+		return errors.New("amphion not found in GOROOT (try running 'go get')")
 	}
 
 	codePath := filepath.Join(s.projPath, s.proj.Name)
@@ -242,7 +242,7 @@ func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err e
 		}
 
 		data := generators.MakeCompFileTemplateData(packageComponents, packagePath)
-		return generators.Comp(data, path)
+		return generators.Comp(data, path, "comp.gen.go")
 	})
 
 	return
@@ -343,7 +343,11 @@ func (s *DevServer) iosBuild(mainData *generators.MainTemplateData) (err error) 
 
 func (s *DevServer) InspectCode() error {
 	if settings.Current.GoRoot == "" {
-		s.inputGoRoot()
+		fmt.Println("GOROOT not defined")
+		err := settings.InputGoRoot()
+		if err != nil {
+			return err
+		}
 	}
 
 	fmt.Println("Running code inspection...")
@@ -351,7 +355,7 @@ func (s *DevServer) InspectCode() error {
 	prScope := s.goInspector.GetScope("project")
 	prScope.Clear()
 
-	_ = filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			return nil
 		}
@@ -365,6 +369,9 @@ func (s *DevServer) InspectCode() error {
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	for _, msg := range s.goInspector.InspectComponents(prScope) {
 		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
@@ -373,15 +380,7 @@ func (s *DevServer) InspectCode() error {
 	return nil
 }
 
-func (s *DevServer) inputGoRoot() {
-	fmt.Print("GOROOT no defined. Please enter a valid GOROOT path:")
-	fmt.Scanln(&settings.Current.GoRoot)
-	_, err := os.Stat(settings.Current.GoRoot)
-	if err != nil {
-		panic(err)
-	}
-	_ = settings.Save(settings.Current)
-}
+
 
 func (s *DevServer) RunProject() (err error) {
 	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {

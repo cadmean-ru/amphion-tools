@@ -26,31 +26,7 @@ func devGenerate() {
 		return
 	}
 
-	err = inspector.InspectSemantics(scope, "common")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = inspector.InspectSemantics(scope, "common/a")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = inspector.InspectSemantics(scope, "rendering")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = inspector.InspectSemantics(scope, "engine")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = inspector.InspectSemantics(scope, "engine/builtin")
+	err = inspector.InspectAmphion()
 	if err != nil {
 		fmt.Println(err)
 		return

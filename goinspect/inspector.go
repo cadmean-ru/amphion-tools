@@ -1,6 +1,7 @@
 package goinspect
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -83,6 +84,40 @@ func (i *Inspector) GetExportedComponents(scope *Scope) []*StructInfo {
 	return comps
 }
 
+func (i *Inspector) InspectAmphion() (err error) {
+	if i.amphionScope == nil {
+		err = errors.New("no amphion scope")
+		return
+	}
+
+	err = i.InspectSemantics(i.amphionScope, "common")
+	if err != nil {
+		return
+	}
+
+	err = i.InspectSemantics(i.amphionScope, "common/a")
+	if err != nil {
+		return
+	}
+
+	err = i.InspectSemantics(i.amphionScope, "rendering")
+	if err != nil {
+		return
+	}
+
+	err = i.InspectSemantics(i.amphionScope, "engine")
+	if err != nil {
+		return
+	}
+
+	err = i.InspectSemantics(i.amphionScope, "engine/builtin")
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func (i *Inspector) InspectComponents(scope *Scope) []string {
 	messages := make([]string, 0, 10)
 	componentInterface := i.amphionScope.GetInterface("Component")
@@ -115,11 +150,11 @@ func (i *Inspector) InspectComponent(comp *StructInfo) []string {
 
 	for _, m := range comp.GetAllMethods() {
 		if m.Receiver.PassageKind == ByValue {
-			messages = append(messages, fmt.Sprintf("Warning: Avoid using value receivers for component methods: %s", comp.Name))
+			messages = append(messages, fmt.Sprintf("Warning: Avoid using value receivers for component methods: %s.%s", comp.Package, comp.Name))
 		}
 
 		if getNameInfo.Matches(m) {
-			messages = append(messages, fmt.Sprintf("Warning: Unnecessary method GetName() string: %s", comp.Name))
+			messages = append(messages, fmt.Sprintf("Warning: Unnecessary method GetName() string: %s.%s", comp.Package, comp.Name))
 		}
 	}
 

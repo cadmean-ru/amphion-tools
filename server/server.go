@@ -141,30 +141,10 @@ func (s *DevServer) prepareInspector() error {
 
 	codePath := filepath.Join(s.projPath, s.proj.Name)
 
-	amScope, _ := s.goInspector.NewScope("amphion", amPath)
-	_, _ = s.goInspector.NewScope("project", codePath)
+	_, _ = s.goInspector.NewScope(goinspect.AmphionScope, amPath)
+	_, _ = s.goInspector.NewScope(goinspect.ProjectScope, codePath)
 
-	err := s.goInspector.InspectSemantics(amScope, "common")
-	if err != nil {
-		return err
-	}
-
-	err = s.goInspector.InspectSemantics(amScope, "common/a")
-	if err != nil {
-		return err
-	}
-
-	err = s.goInspector.InspectSemantics(amScope, "rendering")
-	if err != nil {
-		return err
-	}
-
-	err = s.goInspector.InspectSemantics(amScope, "engine")
-	if err != nil {
-		return err
-	}
-
-	err = s.goInspector.InspectSemantics(amScope, "engine/builtin")
+	err := s.goInspector.InspectAmphion()
 	if err != nil {
 		return err
 	}

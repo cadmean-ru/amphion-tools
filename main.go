@@ -43,6 +43,8 @@ func main() {
 		devServe()
 	case "dev-generate":
 		devGenerate()
+	case "dev-goinspect":
+		devGoInspect()
 	default:
 		fmt.Println("Unknown command")
 	}

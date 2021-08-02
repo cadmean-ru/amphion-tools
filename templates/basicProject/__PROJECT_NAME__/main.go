@@ -7,7 +7,3 @@ import (
 func main() {
 	runApp()
 }
-
-func registerComponents(cm *engine.ComponentsManager) {
-
-}

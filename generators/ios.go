@@ -29,16 +29,15 @@ package iosCli
 import (
 	"fmt"
 	"github.com/cadmean-ru/amphion/engine"
-	"github.com/cadmean-ru/amphion/engine/builtin"
 	"github.com/cadmean-ru/amphion/frontend"
 	"github.com/cadmean-ru/amphion/frontend/ios"
 	"github.com/cadmean-ru/amphion/frontend/cli"
-	"AmphionLand/components"
+	{{ range $imp := .CompData.Imports }}
+	"{{ $imp }}"
+	{{ end }}
 )
 
 var front frontend.Frontend
-
-//var registerComponents func(cm *engine.ComponentsManager)
 
 func AmphionInitIos(f cli.FrontendDelegate, rm cli.ResourceManagerDelegate, rd cli.RendererDelegate) {
 	fmt.Println("AmphionInitIos")
@@ -51,26 +50,11 @@ func AmphionInitIos(f cli.FrontendDelegate, rm cli.ResourceManagerDelegate, rd c
 	fmt.Println("AmphionInitIos 2")
 	
 	cm := e.GetComponentsManager()
-	cm.RegisterComponentType(&builtin.ShapeView{})
-	cm.RegisterComponentType(&builtin.CircleBoundary{})
-	cm.RegisterComponentType(&builtin.OnClickListener{})
-	cm.RegisterComponentType(&builtin.TextView{})
-	cm.RegisterComponentType(&builtin.RectBoundary{})
-	cm.RegisterComponentType(&builtin.TriangleBoundary{})
-	cm.RegisterComponentType(&builtin.BezierView{})
-	cm.RegisterComponentType(&builtin.DropdownView{})
-	cm.RegisterComponentType(&builtin.ImageView{})
-	cm.RegisterComponentType(&builtin.MouseMover{})
-	cm.RegisterComponentType(&builtin.BuilderComponent{})
-	cm.RegisterComponentType(&builtin.GridLayout{})
-	cm.RegisterComponentType(&builtin.NativeInputView{})
-	cm.RegisterComponentType(&builtin.EventListener{})
+	{{ range $comp := .CompData.Components }}
+	cm.RegisterComponentType(&{{ $comp.LastPackage }}.{{ $comp.Name }}{})
+	{{ end }}
 
 	fmt.Println("AmphionInitIos 3")
-
-	registerComponents(cm)
-
-	fmt.Println("AmphionInitIos 4")
 	
 	{{ if (gt (len .Resources) 0) }}
 	rm1 := e.GetResourceManager()
@@ -83,30 +67,10 @@ func AmphionInitIos(f cli.FrontendDelegate, rm cli.ResourceManagerDelegate, rd c
 
 	go func() {
 		e.Start()
-		e.LoadApp()
+		e.LoadApp(&AppDelegate{})
 	}()
 
 	go front.Run()
-}
-
-func registerComponents(cm *engine.ComponentsManager) {
-	cm.RegisterComponentType(&components.TestComponent{})
-	cm.RegisterComponentType(&components.InputField{})
-	cm.RegisterComponentType(&components.MainSceneController{})
-	cm.RegisterComponentType(&components.Selection{})
-	cm.RegisterComponentType(&components.Zooming{})
-	cm.RegisterComponentType(&components.LoginSceneController{})
-	cm.RegisterComponentType(&builtin.NativeInputView{})
-	cm.RegisterComponentType(&components.WidgetGrid{})
-	cm.RegisterComponentType(&components.WodgetController{})
-	cm.RegisterComponentType(&components.EmptyBox{})
-	cm.RegisterComponentType(&components.SearchAlgorithm{})
-	cm.RegisterComponentType(&components.EditorController{})
-	cm.RegisterComponentType(&components.PrefabViewerController{})
-	cm.RegisterComponentType(&components.ClickAndInspeceet{})
-	cm.RegisterComponentType(&components.EditorGrid{})
-	cm.RegisterComponentType(&components.WeatherController{})
-	cm.RegisterEventHandler(components.OnClick)
 }
 
 func RegisterPrimitiveRendererDelegate(primitiveKind int, delegate cli.PrimitiveRendererDelegate) {

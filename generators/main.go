@@ -39,11 +39,9 @@ func runApp() {
 
 	cm := e.GetComponentsManager()
 
-{{ range $comp := .CompData.Components }}
+	{{ range $comp := .CompData.Components }}
 	cm.RegisterComponentType(&{{ $comp.LastPackage }}.{{ $comp.Name }}{})
-{{ end }}
-
-	registerComponents(cm)
+	{{ end }}
 	
 	{{ if (gt (len .Resources) 0) }}
 	rm := e.GetResourceManager()
@@ -54,7 +52,7 @@ func runApp() {
 
 	go func() {
 		e.Start()
-		e.LoadApp()
+		e.LoadApp(&AppDelegate{})
 
 		{{ if (ne .Frontend "pc") }}
 		e.WaitForStop()

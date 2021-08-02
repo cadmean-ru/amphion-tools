@@ -45,15 +45,16 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 	_ = settings.Save(settings.Current)
 
 	s = &DevServer{
-		runConfig:    runConfig,
-		done:         make(chan bool, 1),
-		stopped:      false,
-		proj:         config,
-		projPath:     projectPath,
-		buildPath:    filepath.Join(projectPath, "build"),
-		amVersion:    amVersion,
-		goInspector:  goinspect.NewInspector(),
-		resInspector: resinspect.NewInspector(),
+		runConfig:      runConfig,
+		done:          make(chan bool, 1),
+		stopped:       false,
+		proj:          config,
+		projPath:      projectPath,
+		buildPath:     filepath.Join(projectPath, "build"),
+		amVersion:     amVersion,
+		goInspector:   goinspect.NewInspector(),
+		resInspector:  resinspect.NewInspector(),
+		buildDelegate: NewBuildDelegateForFrontend(runConfig.Frontend),
 	}
 
 	err = s.prepareInspector()
@@ -90,16 +91,17 @@ func getAmphionVersion(codePath string) (string, error) {
 }
 
 type DevServer struct {
-	runConfig    *project.RunConfig
-	done         chan bool
-	stopped      bool
-	proj         *project.Config
-	projPath     string
-	buildPath    string
-	webDebug     *WebDebugServer
-	amVersion    string
-	goInspector  *goinspect.Inspector
-	resInspector *resinspect.Inspector
+	runConfig      *project.RunConfig
+	done          chan bool
+	stopped       bool
+	proj          *project.Config
+	projPath      string
+	buildPath     string
+	webDebug      *WebDebugServer
+	amVersion     string
+	goInspector   *goinspect.Inspector
+	resInspector  *resinspect.Inspector
+	buildDelegate BuildDelegate
 }
 
 func (s *DevServer) Stop() {
@@ -178,14 +180,21 @@ func (s *DevServer) BuildProject() error {
 		return err
 	}
 
-	switch s.runConfig.Frontend {
-	case "android":
-		return s.androidBuild(mainData)
-	case "ios":
-		return s.iosBuild(mainData)
-	default:
-		return s.defaultBuild(mainData)
+	builtinResPath := filepath.Join("templates", "res")
+	err = utils.CopyDir(builtinResPath, filepath.Join(s.projPath, "res", "builtin"))
+	if err != nil {
+		return err
 	}
+
+	err = s.buildDelegate.Build(&BuildDelegateContext{
+		projPath:         s.projPath,
+		buildPath:        s.buildPath,
+		proj:             s.proj,
+		runConfig:         s.runConfig,
+		mainTemplateData: mainData,
+	})
+
+	return err
 }
 
 func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err error) {
@@ -228,99 +237,6 @@ func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err e
 	return
 }
 
-func (s *DevServer) defaultBuild(mainData *generators.MainTemplateData) (err error) {
-	srcPath := filepath.Join(s.projPath, s.proj.Name)
-
-	//0. Copy builtin res folder to run folder
-	builtinResPath := filepath.Join("templates", "res")
-	err = utils.CopyDir(builtinResPath, filepath.Join(s.projPath, "res", "builtin"))
-	if err != nil {
-		return err
-	}
-
-	//1. Generate code
-	err = generators.Main(mainData, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-
-	//2. Run go build
-	var dstPath string
-	var dstFileName string
-	var goos, goarch string
-
-	switch s.runConfig.Frontend {
-	case "pc":
-		dstPath = filepath.Join(s.buildPath, runtime.GOOS)
-		dstFileName = executableName(s.proj, s.runConfig)
-		goos = os.Getenv("GOOS")
-		goarch = os.Getenv("GOARCH")
-	case "web":
-		dstPath = filepath.Join(s.buildPath, "web")
-		dstFileName = executableName(s.proj, s.runConfig)
-		goos = "js"
-		goarch = "wasm"
-	default:
-		return fmt.Errorf("unknown platform")
-	}
-
-	_ = os.Mkdir(dstPath, os.FileMode(0777))
-
-	err = goBuild(srcPath, dstPath, dstFileName, goos, goarch)
-
-	return
-}
-
-func (s *DevServer) androidBuild(mainData *generators.MainTemplateData) (err error) {
-	srcPath := filepath.Join(s.projPath, s.proj.Name)
-
-	//1. Generate code
-	err = generators.AndroidMain(mainData, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-	err = generators.Android(mainData, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-
-	//2. Run gomobile bind
-	var dstPath = filepath.Join(s.buildPath, s.proj.Name+".android.aar")
-
-	err = s.goMobileBind("android", srcPath, dstPath)
-
-	if err == nil {
-		fmt.Printf("Android library file was successfully created: %s\n", dstPath)
-	}
-
-	return
-}
-
-func (s *DevServer) iosBuild(mainData *generators.MainTemplateData) (err error) {
-	srcPath := filepath.Join(s.projPath, s.proj.Name)
-
-	//1. Generate code
-	err = generators.IosMain(mainData, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-	err = generators.Ios(mainData, s.projPath, s.proj, s.runConfig)
-	if err != nil {
-		return
-	}
-
-	//2. Run gomobile bind
-	var dstPath = filepath.Join(s.buildPath, "Amphion.framework")
-
-	err = s.goMobileBind("ios", srcPath, dstPath)
-
-	if err == nil {
-		fmt.Printf("iOS framework was successfully created: %s\n", dstPath)
-	}
-
-	return
-}
-
 func (s *DevServer) InspectCode() error {
 	if settings.Current.GoRoot == "" {
 		fmt.Println("GOROOT not defined")
@@ -359,8 +275,6 @@ func (s *DevServer) InspectCode() error {
 
 	return nil
 }
-
-
 
 func (s *DevServer) RunProject() (err error) {
 	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {
@@ -433,69 +347,6 @@ func (s *DevServer) RunProject() (err error) {
 	//If on web, refresh page
 	if s.runConfig.Frontend == "web" && s.webDebug != nil {
 		s.webDebug.Refresh()
-	}
-
-	return
-}
-
-func goBuild(srcPath, dstPath, dstFileName, goos, goarch string) (err error) {
-	outFilePath := filepath.Join(dstPath, dstFileName)
-
-	build := exec.Command("go", "build", "-o", outFilePath)
-	build.Dir = srcPath
-	build.Env = os.Environ()
-	build.Env = append(build.Env, "GOOS="+goos)
-	build.Env = append(build.Env, "GOARCH="+goarch)
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-
-	err = build.Run()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return
-}
-
-func (s *DevServer) goMobileBind(target, srcPath, dstFilePath string) (err error) {
-
-	var bind *exec.Cmd
-
-	if target == "android" {
-		bind = exec.Command("gomobile",
-			"bind",
-			"-target="+target,
-			"-o", dstFilePath,
-			"-javapkg=ru.cadmean.amphion.android",
-			s.proj.Name+"/generated/droidCli",
-			"github.com/cadmean-ru/amphion/frontend/cli",
-			"github.com/cadmean-ru/amphion/common/atext",
-			"github.com/cadmean-ru/amphion/common/dispatch",
-		)
-	} else {
-		bind = exec.Command("gomobile",
-			"bind",
-			"-target="+target,
-			"-o", dstFilePath,
-			s.proj.Name+"/generated/iosCli",
-			"github.com/cadmean-ru/amphion/frontend/cli",
-			"github.com/cadmean-ru/amphion/common/atext",
-			"github.com/cadmean-ru/amphion/common/dispatch",
-		)
-	}
-
-	bind.Dir = srcPath
-	bind.Env = os.Environ()
-	if target == "android" {
-		bind.Env = append(bind.Env, "ANDROID_NDK_HOME=/Users/alex/Library/Android/sdk/ndk/23.0.7196353")
-		bind.Env = append(bind.Env, "ANDROID_HOME=/Users/alex/Library/Android/sdk")
-	}
-
-	output, err := bind.CombinedOutput()
-	fmt.Printf("%s\n", output)
-
-	if err != nil {
-		return
 	}
 
 	return

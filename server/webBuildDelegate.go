@@ -5,14 +5,13 @@ import (
 	"amphion-tools/gotools"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
-type PcBuildDelegate struct {
+type WebBuildDelegate struct {
 
 }
 
-func (p *PcBuildDelegate) Build(ctx *BuildDelegateContext) (err error) {
+func (w *WebBuildDelegate) Build(ctx *BuildDelegateContext) (err error) {
 	srcPath := filepath.Join(ctx.projPath, ctx.proj.Name)
 
 	//1. Generate code
@@ -22,10 +21,10 @@ func (p *PcBuildDelegate) Build(ctx *BuildDelegateContext) (err error) {
 	}
 
 	//2. Run go build
-	var dstPath = filepath.Join(ctx.buildPath, runtime.GOOS)
+	var dstPath = filepath.Join(ctx.buildPath, "web")
 	var dstFileName = executableName(ctx.proj, ctx.runConfig)
-	var goos = os.Getenv("GOOS")
-	var goarch = os.Getenv("GOARCH")
+	var goos = "js"
+	var goarch = "wasm"
 
 	_ = os.Mkdir(dstPath, os.FileMode(0777))
 

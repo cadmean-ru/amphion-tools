@@ -13,13 +13,7 @@ func main() {
 
 	args := os.Args
 
-	s := settings.Load()
-	lastProjectPath := ""
-	if s.LastProject != nil {
-		fmt.Printf("Last project: %s - %s\n", s.LastProject.Name, s.LastProject.Path)
-		fmt.Println("Use command \"last\" to serve it.")
-		lastProjectPath = s.LastProject.Path
-	}
+	settings.Load()
 
 	var command string
 
@@ -34,9 +28,11 @@ func main() {
 	case "create":
 		createProjectInteractive()
 	case "serve":
-		serve("")
+		serve(false)
 	case "last":
-		serve(lastProjectPath)
+		serve(true)
+	case "build":
+		build()
 	case "analyze":
 		analyze()
 	case "dev-serve":

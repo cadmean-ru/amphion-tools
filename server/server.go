@@ -136,9 +136,17 @@ func (s *DevServer) Start() {
 }
 
 func (s *DevServer) prepareInspector() error {
+	if settings.Current.GoRoot == "" {
+		fmt.Println("GOROOT not defined")
+		err := settings.InputGoRoot()
+		if err != nil {
+			return err
+		}
+	}
+
 	amPath := filepath.Join(settings.Current.GoRoot, "pkg", "mod", "github.com", "cadmean-ru", "amphion@"+s.amVersion)
 	if !utils.Exists(amPath) {
-		return errors.New("amphion not found in GOROOT (try running 'go get')")
+		return errors.New(fmt.Sprintf("amphion@%s not found in GOROOT (try running 'go get')", s.amVersion))
 	}
 
 	codePath := filepath.Join(s.projPath, s.proj.Name)
@@ -166,6 +174,51 @@ func (s *DevServer) BuildProject() error {
 
 	fmt.Println("Building project...")
 
+	err = s.buildExecutable()
+	if err != nil {
+		return err
+	}
+
+	err = s.buildApp()
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (s *DevServer) InspectCode() error {
+	fmt.Println("Running code inspection...")
+
+	prScope := s.goInspector.GetScope("project")
+	prScope.Clear()
+
+	err := filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		relPath := strings.TrimPrefix(path, prScope.Path)
+		relPath = strings.TrimPrefix(relPath, "/")
+		err = s.goInspector.InspectSemantics(prScope, relPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, msg := range s.goInspector.InspectComponents(prScope) {
+		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
+	}
+
+	return nil
+}
+
+func (s *DevServer) buildExecutable() (err error) {
 	resources := s.resInspector.FindResources(s.projPath, s.proj)
 
 	projScope := s.goInspector.GetScope(goinspect.ProjectScope)
@@ -194,7 +247,7 @@ func (s *DevServer) BuildProject() error {
 		mainTemplateData: mainData,
 	})
 
-	return err
+	return
 }
 
 func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err error) {
@@ -237,52 +290,7 @@ func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err e
 	return
 }
 
-func (s *DevServer) InspectCode() error {
-	if settings.Current.GoRoot == "" {
-		fmt.Println("GOROOT not defined")
-		err := settings.InputGoRoot()
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Println("Running code inspection...")
-
-	prScope := s.goInspector.GetScope("project")
-	prScope.Clear()
-
-	err := filepath.Walk(prScope.Path, func(path string, info fs.FileInfo, err error) error {
-		if !info.IsDir() {
-			return nil
-		}
-
-		relPath := strings.TrimPrefix(path, prScope.Path)
-		relPath = strings.TrimPrefix(relPath, "/")
-		err = s.goInspector.InspectSemantics(prScope, relPath)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, msg := range s.goInspector.InspectComponents(prScope) {
-		fmt.Println(ccolor.Ize(ccolor.Yellow, msg))
-	}
-
-	return nil
-}
-
-func (s *DevServer) RunProject() (err error) {
-	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {
-		return errors.New("cannot run on this frontend")
-	}
-
-	fmt.Println("Running project...")
-
+func (s *DevServer) buildApp() (err error) {
 	//1. Copy files from corresponding frontend folder to run folder
 	frontendPath := filepath.Join(s.projPath, "frontend", s.runConfig.Frontend)
 	err = utils.CopyDir(frontendPath, "run")
@@ -331,7 +339,17 @@ func (s *DevServer) RunProject() (err error) {
 	}
 	err = ioutil.WriteFile(filepath.Clean("./run/app.yaml"), data, os.FileMode(0777))
 
-	//6. If on pc, we can run the app
+	return
+}
+
+func (s *DevServer) RunProject() (err error) {
+	if s.runConfig.Frontend != "web" && s.runConfig.Frontend != "pc" {
+		return errors.New("cannot run on this frontend")
+	}
+
+	fmt.Println("Running project...")
+
+	//If on pc, we can run the app
 	if s.runConfig.Frontend == "pc" {
 		cmd := exec.Command("./" + executableName(s.proj, s.runConfig))
 		cmd.Dir = "run"

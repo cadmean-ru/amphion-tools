@@ -3,24 +3,36 @@ package main
 import (
 	"amphion-tools/project"
 	"amphion-tools/server"
+	"amphion-tools/settings"
 	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 )
 
-func serve(lastProjectPath string) {
+func serve(lastProject bool) {
 	var projectPath, runConfig string
+
+	set := settings.Current
+	lastProjectPath := set.LastProject.Path
+	if !lastProject && set.LastProject != nil {
+		fmt.Printf("Last project: %s - %s\n", set.LastProject.Name, set.LastProject.Path)
+		fmt.Println("Enter \"last\" project path to serve it.")
+	}
 
 	if len(os.Args) < 4 {
 		scanner := bufio.NewScanner(os.Stdin)
 
-		if lastProjectPath == "" {
+		if lastProject {
+			projectPath = lastProjectPath
+		} else {
 			fmt.Print("Enter project path: ")
 			scanner.Scan()
 			projectPath = scanner.Text()
-		} else {
-			projectPath = lastProjectPath
+
+			if projectPath == "last" && lastProjectPath != "" {
+				projectPath = lastProjectPath
+			}
 		}
 
 		p, err := project.FindProjectConfig(projectPath)
@@ -90,13 +102,11 @@ func serve(lastProjectPath string) {
 				fmt.Printf("Failed to run project: %s\n", err)
 			}
 		case "br":
-			fmt.Println("Building project...")
 			err = s.BuildProject()
 			if err != nil {
 				fmt.Printf("Build failed: %s\n", err)
 				continue
 			}
-			fmt.Println("Running project...")
 			err = s.RunProject()
 			if err != nil {
 				fmt.Printf("Failed to run project: %s\n", err)

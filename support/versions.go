@@ -8,7 +8,7 @@ import (
 const LatestSupportedAmphionVersion = "0.3.99"
 const MinimumSupportedAmphionVersion = "0.3.0"
 
-const ToolsVersion = "0.4.0"
+const ToolsVersion = "0.4.1"
 
 func IsAmphionVersionSupported(ver string) bool {
 	vLatest := comparisonNumber(stringVersionToNumber(LatestSupportedAmphionVersion))

@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -171,7 +172,7 @@ func (i *Inspector) InspectSemantics(scope *Scope, scopeRelativePath string) err
 		return err
 	}
 
-	packageName := goMod.ModuleName + "/" + scopeRelativePath
+	packageName := goMod.ModuleName + "/" + strings.ReplaceAll(scopeRelativePath, "\\", "/")
 	structs, funcs, interfaces, err := i.findDeclarations(path, packageName)
 	if err != nil {
 		return err

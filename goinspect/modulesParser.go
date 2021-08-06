@@ -1,6 +1,7 @@
 package goinspect
 
 import (
+	"amphion-tools/utils"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ func ParseGoMod(projectPath string) (*GoModInfo, error) {
 
 	info := GoModInfo{}
 
-	for _, line := range strings.Split(modStr, "\n") {
+	for _, line := range strings.Split(modStr, utils.NewLineString()) {
 		if strings.HasPrefix(line, "module") {
 			info.ModuleName = strings.Split(line, " ")[1]
 			break

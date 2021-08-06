@@ -14,16 +14,19 @@ func serve(lastProject bool) {
 	var projectPath, runConfig string
 
 	set := settings.Current
-	lastProjectPath := set.LastProject.Path
-	if !lastProject && set.LastProject != nil {
-		fmt.Printf("Last project: %s - %s\n", set.LastProject.Name, set.LastProject.Path)
-		fmt.Println("Enter \"last\" project path to serve it.")
+	lastProjectPath := ""
+	if set.LastProject != nil {
+		if !lastProject {
+			fmt.Printf("Last project: %s - %s\n", set.LastProject.Name, set.LastProject.Path)
+			fmt.Println("Enter \"last\" project path to serve it.")
+		}
+		lastProjectPath = set.LastProject.Path
 	}
 
 	if len(os.Args) < 4 {
 		scanner := bufio.NewScanner(os.Stdin)
 
-		if lastProject {
+		if lastProject && lastProjectPath != "" {
 			projectPath = lastProjectPath
 		} else {
 			fmt.Print("Enter project path: ")

@@ -40,10 +40,10 @@ type CompFileTemplateData struct {
 }
 
 type CompTemplateData struct {
-	Name         string
-	LastPackage  string
-	FullName   string
-	PackageDot string
+	Name        string
+	LastPackage string
+	FullName    string
+	PackageDot  string
 }
 
 func Comp(data *CompFileTemplateData, dirPath, fileName string) error {

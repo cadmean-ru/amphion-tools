@@ -1,6 +1,9 @@
 package utils
 
-import "runtime"
+import (
+	"runtime"
+	"strings"
+)
 
 func NewLineString() string {
 	switch runtime.GOOS {
@@ -11,11 +14,6 @@ func NewLineString() string {
 	}
 }
 
-func PathSeparator() string {
-	switch runtime.GOOS {
-	case "windows":
-		return "\\"
-	default:
-		return "/"
-	}
+func UnixPath(path string) string {
+	return strings.ReplaceAll(path, "\\", "/")
 }

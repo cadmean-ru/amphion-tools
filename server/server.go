@@ -11,8 +11,6 @@ import (
 	"amphion-tools/utils"
 	"errors"
 	"fmt"
-	ccolor "github.com/TwinProduction/go-color"
-	"gopkg.in/yaml.v2"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -20,6 +18,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	ccolor "github.com/TwinProduction/go-color"
+	"gopkg.in/yaml.v2"
 )
 
 func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err error) {
@@ -45,7 +46,7 @@ func StartDevelopment(projectPath, runConfigName string) (s *DevServer, err erro
 	_ = settings.Save(settings.Current)
 
 	s = &DevServer{
-		runConfig:      runConfig,
+		runConfig:     runConfig,
 		done:          make(chan bool, 1),
 		stopped:       false,
 		proj:          config,
@@ -91,7 +92,7 @@ func getAmphionVersion(codePath string) (string, error) {
 }
 
 type DevServer struct {
-	runConfig      *project.RunConfig
+	runConfig     *project.RunConfig
 	done          chan bool
 	stopped       bool
 	proj          *project.Config
@@ -243,7 +244,7 @@ func (s *DevServer) buildExecutable() (err error) {
 		projPath:         s.projPath,
 		buildPath:        s.buildPath,
 		proj:             s.proj,
-		runConfig:         s.runConfig,
+		runConfig:        s.runConfig,
 		mainTemplateData: mainData,
 	})
 
@@ -267,6 +268,7 @@ func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err e
 
 		packageComponents := make([]*goinspect.StructInfo, 0, len(components))
 		relPath := strings.TrimPrefix(path, scope.Path)
+		relPath = utils.UnixPath(relPath)
 		relPath = strings.TrimPrefix(relPath, "/")
 		packagePath := scope.Module + "/" + relPath
 		packagePath = strings.TrimSuffix(packagePath, "/")

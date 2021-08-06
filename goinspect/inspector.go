@@ -1,6 +1,7 @@
 package goinspect
 
 import (
+	"amphion-tools/utils"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -91,6 +92,8 @@ func (i *Inspector) InspectAmphion() (err error) {
 		return
 	}
 
+	fmt.Printf("Inspecting amphion: %s\n", i.amphionScope.Path)
+
 	err = i.InspectSemantics(i.amphionScope, "common")
 	if err != nil {
 		return
@@ -172,7 +175,8 @@ func (i *Inspector) InspectSemantics(scope *Scope, scopeRelativePath string) err
 		return err
 	}
 
-	packageName := goMod.ModuleName + "/" + strings.ReplaceAll(scopeRelativePath, "\\", "/")
+	packageName := goMod.ModuleName + "/" + strings.TrimPrefix(strings.ReplaceAll(utils.UnixPath(scopeRelativePath), ".", ""), "/")
+	packageName = strings.TrimSuffix(packageName, "/")
 	structs, funcs, interfaces, err := i.findDeclarations(path, packageName)
 	if err != nil {
 		return err

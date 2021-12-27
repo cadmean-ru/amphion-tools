@@ -295,6 +295,9 @@ func (s *DevServer) generateCommon(mainData *generators.MainTemplateData) (err e
 func (s *DevServer) buildApp() (err error) {
 	//1. Copy files from corresponding frontend folder to run folder
 	frontendPath := filepath.Join(s.projPath, "frontend", s.runConfig.Frontend)
+	if stat, err := os.Stat(frontendPath); err == os.ErrNotExist {
+		_ = os.MkdirAll(frontendPath, stat.Mode())
+	}
 	err = utils.CopyDir(frontendPath, "run")
 	if err != nil {
 		return
@@ -326,6 +329,14 @@ func (s *DevServer) buildApp() (err error) {
 		buildPath = filepath.Join(s.buildPath, runtime.GOOS)
 	case "web":
 		buildPath = filepath.Join(s.buildPath, "web")
+	}
+
+	//Temporary workaround for Apple M1 code signing issue
+	if s.runConfig.Frontend == "pc" && runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		fullFilePath := filepath.Join("run", executableName(s.proj, s.runConfig))
+		if _, err = os.Stat(fullFilePath); err == nil {
+			_ = os.Remove(fullFilePath)
+		}
 	}
 
 	err = utils.CopyDir(buildPath, "run")

@@ -3,22 +3,14 @@ module amphion-tools
 go 1.16
 
 require (
-	github.com/TwinProduction/go-color v1.0.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/TwinProduction/go-color v1.0.0
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/go-delve/delve v1.7.0 // indirect
 	github.com/gorilla/websocket v1.4.2
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-isatty v0.0.13 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/peterh/liner v1.2.1 // indirect
-	github.com/pkg/profile v0.0.0-20170413231811-06b906832ed0 // indirect
-	github.com/russross/blackfriday v1.6.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cobra v1.2.1 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
-	go.starlark.net v0.0.0-20210602144842-1cdb82c9e17a // indirect
-	golang.org/x/arch v0.0.0-20210727222714-28578f966459 // indirect
+	github.com/kr/pretty v0.1.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

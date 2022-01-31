@@ -5,17 +5,17 @@ import (
 	"strings"
 )
 
-const LatestSupportedAmphionVersion = "0.3.99"
+const LatestSupportedAmphionVersion = "0.4.99"
 const MinimumSupportedAmphionVersion = "0.3.0"
 
-const ToolsVersion = "0.4.1"
+const ToolsVersion = "0.4.3"
 
 func IsAmphionVersionSupported(ver string) bool {
 	vLatest := comparisonNumber(stringVersionToNumber(LatestSupportedAmphionVersion))
 	vMin := comparisonNumber(stringVersionToNumber(MinimumSupportedAmphionVersion))
 	v := comparisonNumber(stringVersionToNumber(ver))
 
-	return v >= vMin && v <=vLatest
+	return v >= vMin && v <= vLatest
 }
 
 func comparisonNumber(v1, v2, v3 int) int {

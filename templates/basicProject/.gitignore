@@ -1,5 +1,6 @@
 .idea/
 .vscode/
-build/
+[Bb]uild/
 *.gen.go
 **/generated/
+.DS_Store

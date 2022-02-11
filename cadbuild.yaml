@@ -1,0 +1,20 @@
+project: amphion-tools
+build:
+  default:
+    - go-build:
+        goos: darwin
+        goarch: amd64
+        output: amphion-tools@0.4.3-darwin-amd64
+    - go-build:
+        goos: darwin
+        goarch: arm64
+        output: amphion-tools@0.4.3-darwin-arm64
+    - lipo:
+        amd64: amphion-tools@0.4.3-darwin-amd64
+        arm64: amphion-tools@0.4.3-darwin-arm64
+        output: amphion-tools@0.4.3-darwin-universal
+    - go-build:
+        goos: windows
+        goarch: amd64
+        output: amphion-tools@0.4.3-win-amd64.exe
+deploy:
